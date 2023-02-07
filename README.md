@@ -12,6 +12,7 @@
 - Linux or [Linux Subsystem for Windows](https://developerinsider.co/stepwise-guide-to-enable-windows-10-subsystem-for-linux/#:~:text=To%20enable%20the%20Windows%20Subsystem,list%20here%20and%20click%20OK.)
 
 # Installation
+Run these commands in a Linux terminal.
 ```
 pip3 install cmake
 pip3 install opencv-python
