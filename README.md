@@ -1,4 +1,4 @@
-# EE4951W_Vehicle_Tracking_Project
+# Requirements
 - Design a single prototype of a vehicle which can connect to a WiFi network and receive commands from the network moving accordingly.
 - ESP32 architecture is recommended to keep the vehicle small. 
 - Replicate the prototype to build at least one additional vehicle.
