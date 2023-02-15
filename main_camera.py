@@ -31,13 +31,25 @@ def main_camera():
             break
 
         #Convert new frame to gray scale
-        #new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
+        new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
+
+        #Create AprilTag Detector
+        tag_detector = apriltag.Detector()
+
+        #Detect AprilTags
+        tags = tag_detector.detect(new_frame_gray)
+
+        #Outline each detected tag with a square
+        outlined_tags = new_frame
+        for tag in tags:
+            start_point = (int(tag.corners[0][0]), int(tag.corners[0][1]))
+            end_point = (int(tag.corners[2][0]), int(tag.corners[2][1]))
+            outlined_tags = cv2.rectangle(outlined_tags, start_point, end_point, (255,0,0), 4)
 
         #Display video stream
-        cv2.imshow(video_stream_title, new_frame)
+        cv2.imshow(video_stream_title, outlined_tags)
 
-        #Wait for 0 milliseconds
-        #If key pressed == Esc, close window
+        #Can close window on Ctrl+C
         if cv2.waitKey(1) == ord('q'):
             break
 
