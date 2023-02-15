@@ -29,7 +29,7 @@ def main():
 
     img = cv2.imread('apriltag_photo.png', cv2.IMREAD_GRAYSCALE)
 
-    window = 'Camera'
+    window = 'April Tag Example'
     cv2.namedWindow(window)
 
     # set up a reasonable search path for the apriltag DLL inside the
@@ -38,25 +38,24 @@ def main():
     # for "real" deployments, either install the DLL in the appropriate
     # system-wide library directory, or specify your own search paths
     # as needed.
-    
+
+    detector = apriltag.Detector(options,
+                                searchpath=apriltag._get_demo_searchpath())
+
+    detections, dimg = detector.detect(img, return_image=True)
+
+    num_detections = len(detections)
+    print('Detected {} tags.\n'.format(num_detections))
+
+    for i, detection in enumerate(detections):
+        print('Detection {} of {}:'.format(i+1, num_detections))
+        print()
+        print(detection.tostring(indent=2))
+        print()
+
+    overlay = img // 2 + dimg[:, :] // 2
+
     while True:
-
-        detector = apriltag.Detector(options,
-                                    searchpath=apriltag._get_demo_searchpath())
-
-        detections, dimg = detector.detect(img, return_image=True)
-
-        num_detections = len(detections)
-        print('Detected {} tags.\n'.format(num_detections))
-
-        for i, detection in enumerate(detections):
-            print('Detection {} of {}:'.format(i+1, num_detections))
-            print()
-            print(detection.tostring(indent=2))
-            print()
-
-        overlay = img // 2 + dimg[:, :] // 2
-
         cv2.imshow(window, overlay)
         k = cv2.waitKey(1)
 
