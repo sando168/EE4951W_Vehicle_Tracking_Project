@@ -7,14 +7,14 @@
 - The vehicles should be able to follow a specified path.
 
 # Prerequisites
+- Linux or [Virtual Box](https://www.virtualbox.org/)
 - [Python 3](https://www.python.org/downloads/)
 - [Pip3](https://www.geeksforgeeks.org/how-to-install-pip-on-windows/)
-- Linux or [Linux Subsystem for Windows](https://developerinsider.co/stepwise-guide-to-enable-windows-10-subsystem-for-linux/#:~:text=To%20enable%20the%20Windows%20Subsystem,list%20here%20and%20click%20OK.)
 
 # Installation
 Run these commands in a Linux terminal.
 ```
-pip3 install cmake
+sudo apt install cmake
 pip3 install opencv-python
 
 git clone https://github.com/swatbotics/apriltag.git
@@ -32,5 +32,60 @@ pip3 install apriltag
 python3 apriltag_example.py
 ```
 
+# VirtualBox
+For anyone using a Windows based machine that wants to run this project, VirtualBox is the recommended
+means of installation and execution. VirtualBox is a program that can deploy different operating systems within separate windows. Below is a series of steps for getting the project running on VirtualBox.
 
+## Download
+[VirtualBox Link](https://www.virtualbox.org/wiki/Downloads)
+1. Click the "Windows hosts" button
+2. Open the executable and step through the setup wizard without changing anything
+3. Under "VirtualBox Extension Box" click "All Platforms" and step through the setup wizard
 
+[Linux OS Link](https://ubuntu.com/download/desktop)
+
+4. Click "Download" under Ubuntu 22.04 LTS
+
+## Virtual Machine Setup
+5. Click Machine->New
+6. Name the virtual machine and click on the Linux download for "ISO image"
+7. Edit the unattended guest username and password to something memorable
+8. Increasing the amount of RAM is at least recommended
+9.  A standard 25GB virtual disk is more than plenty
+10. Hit "Finish"
+
+## Linux Setup
+11. After hitting "Finsh" the Linux OS should start setting itself up. After it finishes, step through the initial options pages and login
+12. Open a terminal anywhere and run:
+```
+su -
+usermod -a -G sudo YOUR_USER_NAME
+```
+13. Restart the virtual machine
+14. Log back in to the virtual machine and run in terminal:
+```
+sudo apt-get update
+sudo apt upgrade
+```
+
+## Running the Project
+15. Run in terminal:
+```
+sudo apt install python3-pip
+sudo apt install git
+sudo apt install cmake
+pip3 install opencv-python
+
+git clone https://github.com/swatbotics/apriltag
+cd apriltag
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j4
+sudo make install
+pip3 install apriltag
+
+git clone https://github.umn.edu/bensc010/EE4951W_Vehicle_Tracking_Project
+cd EE4951W_Vehicle_Tracking_Project
+python3 apriltag_example.py
+```
