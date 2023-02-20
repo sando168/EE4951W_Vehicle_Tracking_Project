@@ -2,6 +2,7 @@
 
 import cv2
 import apriltag
+import numpy as np
 
 #Macros that remain constant
 video_stream_title = 'Vehicle Tracking'
@@ -42,9 +43,19 @@ def main_camera():
         #Outline each detected tag with a square
         outlined_tags = new_frame
         for tag in tags:
-            start_point = (int(tag.corners[0][0]), int(tag.corners[0][1]))
-            end_point = (int(tag.corners[2][0]), int(tag.corners[2][1]))
-            outlined_tags = cv2.rectangle(outlined_tags, start_point, end_point, (255,0,0), 4)
+
+            #Cast corners to tuple integer pairs
+            upper_left_corner = (int(tag.corners[0][0]), int(tag.corners[0][1]))
+            upper_right_corner = (int(tag.corners[1][0]), int(tag.corners[1][1]))
+            bottom_right_corner = (int(tag.corners[2][0]), int(tag.corners[2][1]))
+            bottom_left_corner = (int(tag.corners[3][0]), int(tag.corners[3][1]))
+            corners = np.array([[upper_left_corner[0],   upper_left_corner[1]],
+                                [upper_right_corner[0],  upper_right_corner[1]],
+                                [bottom_right_corner[0], bottom_right_corner[1]],
+                                [bottom_left_corner[0],  bottom_left_corner[1]]])
+            
+            #Draw the arbitrary contour from corners since the tag could be rotated
+            cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
