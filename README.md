@@ -16,6 +16,7 @@ Run these commands in a Linux terminal.
 ```
 sudo apt install cmake
 pip3 install opencv-python
+pip3 install imgui[all]
 
 git clone https://github.com/swatbotics/apriltag.git
 cd apriltag
@@ -67,9 +68,11 @@ usermod -a -G sudo YOUR_USER_NAME
 sudo apt-get update
 sudo apt upgrade
 ```
+15. Close the virtual machine
+16. In VirtualBox, go to Machine->Settings->USB and click "USB 3.0"
 
 ## Running the Project
-15. Run in terminal:
+17. Run in terminal:
 ```
 sudo apt install python3-pip
 sudo apt install git
