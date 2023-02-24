@@ -12,6 +12,8 @@ import time
 #Macros that remain constant
 GUI_WIDTH = 480
 GUI_HEIGHT = 480
+OUTLINE_TAGS = True
+OUTLINE_ANGLE = True
 video_stream_title = 'Vehicle Tracking' #Title of tracking window
 camera = cv2.VideoCapture(0)            #Open video camera
 tag_detector = apriltag.Detector()      #Create tag detection object
@@ -48,12 +50,13 @@ def setup_camera():
     #Error and stop program if not connected
     if not(camera.isOpened()):
         print('ERROR: Unable to connect to camera')
-    else:
-        camera.set(cv2.CAP_PROP_BUFFERSIZE, 0)
+        exit(1)
 
 
 #Start of Camera Code
 def main_camera():
+    global OUTLINE_TAGS
+    global OUTLINE_ANGLE
 
     #Setup functions
     setup_camera()
@@ -67,7 +70,7 @@ def main_camera():
     previous_time = 1
     current_time = 1
     #Start of while(1) loop that runs forever
-    while True:
+    while not(glfw.window_should_close(gui)) and camera.isOpened():
 
         #Begin UI window events
         glfw.poll_events()
@@ -114,13 +117,15 @@ def main_camera():
             angle = np.rad2deg(theta)
 
             #Draw the arbitrary contour from corners since the tag could be rotated
-            cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
+            if OUTLINE_TAGS:
+                cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
 
             #Draw red line from cetner of tag to indicate angle
-            length = np.linalg.norm(np.array([x, y]))
-            length = int(length / 2)
-            end_point = (int(center[0] + length*np.cos(theta)), int(center[1] + length*np.sin(-1*theta)))
-            cv2.line(outlined_tags, center, end_point, (0,0,255), 3)
+            if OUTLINE_ANGLE:
+                length = np.linalg.norm(np.array([x, y]))
+                length = int(length / 2)
+                end_point = (int(center[0] + length*np.cos(theta)), int(center[1] + length*np.sin(-1*theta)))
+                cv2.line(outlined_tags, center, end_point, (0,0,255), 3)
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
@@ -130,6 +135,10 @@ def main_camera():
         previous_time = current_time
         imgui.text("Framerate: " + str(fps))
         imgui.text("Angle: " + str(angle))
+
+        #Create vehicle UI checkboxes
+        _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
+        _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
 
         #Vehicle UI end
         imgui.end()
