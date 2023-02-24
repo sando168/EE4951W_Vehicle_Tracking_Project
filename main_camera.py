@@ -93,9 +93,11 @@ def main_camera():
 
         #Outline each detected tag with a square
         outlined_tags = new_frame
+        angle = 0
         for tag in tags:
 
             #Cast corners to tuple integer pairs
+            center = (int(tag.center[0]), int(tag.center[1]))
             upper_left_corner = (int(tag.corners[0][0]), int(tag.corners[0][1]))
             upper_right_corner = (int(tag.corners[1][0]), int(tag.corners[1][1]))
             bottom_right_corner = (int(tag.corners[2][0]), int(tag.corners[2][1]))
@@ -104,9 +106,21 @@ def main_camera():
                                 [upper_right_corner[0],  upper_right_corner[1]],
                                 [bottom_right_corner[0], bottom_right_corner[1]],
                                 [bottom_left_corner[0],  bottom_left_corner[1]]])
-            
+
+            #Solve for angular rotation
+            x = upper_right_corner[0] - upper_left_corner[0]
+            y = upper_left_corner[1] - upper_right_corner[1]
+            theta = np.arctan2(y, x)
+            angle = np.rad2deg(theta)
+
             #Draw the arbitrary contour from corners since the tag could be rotated
             cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
+
+            #Draw red line from cetner of tag to indicate angle
+            length = np.linalg.norm(np.array([x, y]))
+            length = int(length / 2)
+            end_point = (int(center[0] + length*np.cos(theta)), int(center[1] + length*np.sin(-1*theta)))
+            cv2.line(outlined_tags, center, end_point, (0,0,255), 3)
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
@@ -115,6 +129,7 @@ def main_camera():
         fps = int(1 / (current_time - previous_time))
         previous_time = current_time
         imgui.text("Framerate: " + str(fps))
+        imgui.text("Angle: " + str(angle))
 
         #Vehicle UI end
         imgui.end()
