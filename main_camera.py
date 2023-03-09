@@ -2,6 +2,7 @@
 import cv2
 import apriltag
 import numpy as np
+from bitstring import BitArray
 
 import imgui
 import glfw
@@ -12,14 +13,18 @@ import time
 #Macros that remain constant
 GUI_WIDTH = 480
 GUI_HEIGHT = 480
-OUTLINE_TAGS = True
-OUTLINE_ANGLE = True
-video_stream_title = 'Vehicle Tracking' #Title of tracking window
-camera = cv2.VideoCapture(0)            #Open video camera
-tag_detector = apriltag.Detector()      #Create tag detection object
+RESOLUTION_WIDTH = 1024
+RESOLUTION_HEIGHT = 768
+TAG_GRID_SIZE = 8
+OUTLINE_TAGS = False
+OUTLINE_ANGLE = False
+SHOW_TAG_IDENTIFICATION = False
+video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
+camera = cv2.VideoCapture(0)                            #Open video camera
+tag_detector = apriltag.Detector()                      #Create tag detection object
 
 #Setup function for creating vehicle UI window
-def impl_glfw_init():
+def setup_gui():
 
     #Initialize GLFW and detect for any errors
     if not(glfw.init()):
@@ -51,16 +56,20 @@ def setup_camera():
     if not(camera.isOpened()):
         print('ERROR: Unable to connect to camera')
         exit(1)
+    else:
+        camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
+        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
 
 
 #Start of Camera Code
 def main_camera():
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
+    global SHOW_TAG_IDENTIFICATION
 
     #Setup functions
     setup_camera()
-    gui = impl_glfw_init()
+    gui = setup_gui()
     imgui.create_context()
     imgui.get_io().display_size = GUI_WIDTH, GUI_HEIGHT
     imgui.get_io().fonts.get_tex_data_as_rgba32()
@@ -96,8 +105,12 @@ def main_camera():
 
         #Outline each detected tag with a square
         outlined_tags = new_frame
+        id = BitArray(0)
         angle = 0
         for tag in tags:
+
+            outlined_tags = new_frame
+            id = BitArray(0)
 
             #Cast corners to tuple integer pairs
             center = (int(tag.center[0]), int(tag.center[1]))
@@ -116,11 +129,46 @@ def main_camera():
             theta = np.arctan2(y, x)
             angle = np.rad2deg(theta)
 
+            #Solve tag ID by setting black squares = 0 and white squares = 1
+            #Create bit string with MSB in top left, and LSB in bottom right
+
+            #1. Using the detected corners on the tag, set target corners to warp the tag corners to
+            target_corners = np.float32([[1,1],
+                                         [1, RESOLUTION_HEIGHT-1],
+                                         [RESOLUTION_WIDTH-1, RESOLUTION_HEIGHT-1],
+                                         [RESOLUTION_WIDTH-1, 1]])
+            corners_h = np.float32(corners)
+            tag_homography = cv2.getPerspectiveTransform(corners_h, target_corners)
+            cropped_tag = outlined_tags
+            cropped_tag = cv2.warpPerspective(cropped_tag, tag_homography, (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), flags=cv2.INTER_LINEAR)
+            cropped_tag_gray = cv2.cvtColor(cropped_tag, cv2.COLOR_BGR2GRAY)
+
+            #2. Iterate across squares on tag grid sampling from top left to bottom right
+            #Iterate across rows of pixels
+            height_step = int(RESOLUTION_WIDTH/TAG_GRID_SIZE)
+            width_step = int(RESOLUTION_HEIGHT/TAG_GRID_SIZE)
+            for i in range(int(height_step/2), RESOLUTION_WIDTH-1, height_step):
+
+                #Iterate across columns of pixels
+                for j in range(int(width_step/2), RESOLUTION_HEIGHT-1, width_step):
+
+                    #White grid space
+                    if (cropped_tag_gray[j][i] >= 90):
+                        id.append('0b1')
+                    #Black grid space
+                    else:
+                        id.append('0b0')
+
+                    if SHOW_TAG_IDENTIFICATION:
+                        cropped_tag_gray = cv2.circle(cropped_tag_gray, (i,j), 4, (255,0,0), 2)
+
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
                 cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
+            elif SHOW_TAG_IDENTIFICATION:
+                outlined_tags = cropped_tag_gray
 
-            #Draw red line from cetner of tag to indicate angle
+            #Draw red line from center of tag to indicate angle
             if OUTLINE_ANGLE:
                 length = np.linalg.norm(np.array([x, y]))
                 length = int(length / 2)
@@ -130,15 +178,17 @@ def main_camera():
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
         
-        #Update framerate on vehicle UI
+        #Update data on vehicle UI
         fps = int(1 / (current_time - previous_time))
         previous_time = current_time
         imgui.text("Framerate: " + str(fps))
+        imgui.text("ID: " + str(id))
         imgui.text("Angle: " + str(angle))
 
         #Create vehicle UI checkboxes
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
         _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
+        _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
 
         #Vehicle UI end
         imgui.end()
@@ -150,8 +200,8 @@ def main_camera():
         impl.render(imgui.get_draw_data())
         glfw.swap_buffers(gui)
 
-        #Can close window on Ctrl+C
-        if cv2.waitKey(1) == ord('q'):
+        #Can close window on ESC
+        if cv2.waitKey(1) == 27:
             break
 
     #Release video and close windows

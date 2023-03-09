@@ -51,7 +51,7 @@ means of installation and execution. VirtualBox is a program that can deploy dif
 5. Click Machine->New
 6. Name the virtual machine and click on the Linux download for "ISO image"
 7. Edit the unattended guest username and password to something memorable
-8. Increasing the amount of RAM is at least recommended
+8. Increasing the amount of RAM to at least 8GB is recommended
 9.  A standard 25GB virtual disk is more than plenty
 10. Hit "Finish"
 
@@ -78,6 +78,7 @@ sudo apt install python3-pip
 sudo apt install git
 sudo apt install cmake
 pip3 install opencv-python
+pip3 install bitstring
 
 git clone https://github.com/swatbotics/apriltag
 cd apriltag
