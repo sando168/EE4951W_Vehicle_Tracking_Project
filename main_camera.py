@@ -152,7 +152,7 @@ def auto_detect_boundaries():
                     id.append('0b0')
 
         #Determine world coordinate and top boundary by left most boundaries
-        if center[0] < detected_tags[1].position[0]:
+        if center[0] < detected_tags[1].position[0] or center[0] < detected_tags[0].position[0]:
 
             #Top Boundary
             if center[1] < detected_tags[1].position[1]:
@@ -279,7 +279,14 @@ def main_camera():
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
-                if id == detected_tags[0].id or id == detected_tags[1].id or id == detected_tags[2].id:
+                if id == detected_tags[0].id:
+                    cv2.putText(outlined_tags, 'Origin', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
+                    cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
+                elif id == detected_tags[1].id:
+                    cv2.putText(outlined_tags, 'Top', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
+                    cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
+                elif id == detected_tags[2].id:
+                    cv2.putText(outlined_tags, 'Right', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
                     cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
                 else:
                     cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
