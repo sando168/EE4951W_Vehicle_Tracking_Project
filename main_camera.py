@@ -23,6 +23,25 @@ video_stream_title = 'Vehicle Tracking'                 #Title of tracking windo
 camera = cv2.VideoCapture(0)                            #Open video camera
 tag_detector = apriltag.Detector()                      #Create tag detection object
 
+class ATag:
+    descriptor = 'tag'
+    id = BitArray(0)
+    position = (0,0)
+    angle = 0.0
+
+    def __init__ (self, descr, id, pos, angle):
+        self.descriptor = descr
+        self.id = id
+        self.position = pos
+        self.angle = angle
+
+#Dynamic array of detected tags including the tags outlining the boundaries of the play field
+#The first three entries in the array are fixed in the order below
+world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0)
+top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0)
+right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0)
+detected_tags = [world_coordinate, top_bound, right_bound]
+
 #Setup function for creating vehicle UI window
 def setup_gui():
 
@@ -38,7 +57,7 @@ def setup_gui():
     glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
 
     #Create vehicle UI window
-    gui = glfw.create_window(GUI_WIDTH, GUI_HEIGHT, "Vehicle UI", None, None)
+    gui = glfw.create_window(GUI_WIDTH, GUI_HEIGHT+100, "Vehicle UI", None, None)
     glfw.make_context_current(gui)
 
     #Detect if anything went wrong when creating window
@@ -60,20 +79,115 @@ def setup_camera():
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
 
+#Setup function for determining the boundary tags within the frame
+#Can be called by user within the UI for resetting bounds
+def auto_detect_boundaries():
+    global detected_tags
+
+    #Retrieve new frame from camera
+    ret, new_frame = camera.read()
+
+    #Check if new_frame is correct
+    if not(ret):
+        print('ERROR: Invalid new camera frame')
+        exit(1)
+
+    #Convert new frame to gray scale
+    new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
+
+    #Detect AprilTags
+    tags = tag_detector.detect(new_frame_gray)
+
+    #Iterate for each tag detected
+    for tag in tags:
+
+        cropped_tag = new_frame_gray
+        
+        #Cast corners to tuple integer pairs
+        center = (int(tag.center[0]), int(tag.center[1]))
+        upper_left_corner = (int(tag.corners[0][0]), int(tag.corners[0][1]))
+        upper_right_corner = (int(tag.corners[1][0]), int(tag.corners[1][1]))
+        bottom_right_corner = (int(tag.corners[2][0]), int(tag.corners[2][1]))
+        bottom_left_corner = (int(tag.corners[3][0]), int(tag.corners[3][1]))
+        corners = np.array([[upper_left_corner[0],   upper_left_corner[1]],
+                            [upper_right_corner[0],  upper_right_corner[1]],
+                            [bottom_right_corner[0], bottom_right_corner[1]],
+                            [bottom_left_corner[0],  bottom_left_corner[1]]])
+
+        #Solve for angular rotation
+        x = upper_right_corner[0] - upper_left_corner[0]
+        y = upper_left_corner[1] - upper_right_corner[1]
+        theta = np.arctan2(y, x)
+        angle = np.rad2deg(theta)
+
+        #Solve tag ID by setting black squares = 0 and white squares = 1
+        #Create bit string with MSB in top left, and LSB in bottom right
+
+        #1. Using the detected corners on the tag, set target corners to warp the tag corners to
+        target_corners = np.float32([[1,1],
+                                        [1, RESOLUTION_HEIGHT-1],
+                                        [RESOLUTION_WIDTH-1, RESOLUTION_HEIGHT-1],
+                                        [RESOLUTION_WIDTH-1, 1]])
+        corners_h = np.float32(corners)
+        tag_homography = cv2.getPerspectiveTransform(corners_h, target_corners)
+        cropped_tag = new_frame_gray
+        cropped_tag = cv2.warpPerspective(cropped_tag, tag_homography, (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), flags=cv2.INTER_LINEAR)
+        #cropped_tag_gray = cv2.cvtColor(cropped_tag, cv2.COLOR_BGR2GRAY)
+
+        #2. Iterate across squares on tag grid sampling from top left to bottom right
+        #Iterate across rows of pixels
+        height_step = int(RESOLUTION_WIDTH/TAG_GRID_SIZE)
+        width_step = int(RESOLUTION_HEIGHT/TAG_GRID_SIZE)
+        id = BitArray(0)
+        for i in range(int(height_step/2), RESOLUTION_WIDTH-1, height_step):
+
+            #Iterate across columns of pixels
+            for j in range(int(width_step/2), RESOLUTION_HEIGHT-1, width_step):
+
+                #White grid space
+                if (cropped_tag[j][i] >= 90):
+                    id.append('0b1')
+                #Black grid space
+                else:
+                    id.append('0b0')
+
+        #Determine world coordinate and top boundary by left most boundaries
+        if center[0] < detected_tags[1].position[0]:
+
+            #Top Boundary
+            if center[1] < detected_tags[1].position[1]:
+                detected_tags[1].id = id
+                detected_tags[1].position = center
+                detected_tags[1].angle = angle
+
+            #World Coordinate
+            else:
+                detected_tags[0].id = id
+                detected_tags[0].position = center
+                detected_tags[0].angle = angle
+
+        #Right Boundary
+        elif center[0] > detected_tags[2].position[0]:
+            detected_tags[2].id = id
+            detected_tags[2].position = center
+            detected_tags[2].angle = angle
+
 
 #Start of Camera Code
 def main_camera():
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
     global SHOW_TAG_IDENTIFICATION
+    global detected_tags
 
     #Setup functions
     setup_camera()
     gui = setup_gui()
     imgui.create_context()
-    imgui.get_io().display_size = GUI_WIDTH, GUI_HEIGHT
+    #imgui.get_io().display_size = GUI_WIDTH, GUI_HEIGHT
     imgui.get_io().fonts.get_tex_data_as_rgba32()
     impl = GlfwRenderer(gui)
+    auto_detect_boundaries()
 
     #Time variables for measuring framerate
     previous_time = 1
@@ -107,6 +221,7 @@ def main_camera():
         outlined_tags = new_frame
         id = BitArray(0)
         angle = 0
+        imgui.begin_child("Detected Tags")
         for tag in tags:
 
             outlined_tags = new_frame
@@ -122,12 +237,6 @@ def main_camera():
                                 [upper_right_corner[0],  upper_right_corner[1]],
                                 [bottom_right_corner[0], bottom_right_corner[1]],
                                 [bottom_left_corner[0],  bottom_left_corner[1]]])
-
-            #Solve for angular rotation
-            x = upper_right_corner[0] - upper_left_corner[0]
-            y = upper_left_corner[1] - upper_right_corner[1]
-            theta = np.arctan2(y, x)
-            angle = np.rad2deg(theta)
 
             #Solve tag ID by setting black squares = 0 and white squares = 1
             #Create bit string with MSB in top left, and LSB in bottom right
@@ -162,9 +271,18 @@ def main_camera():
                     if SHOW_TAG_IDENTIFICATION:
                         cropped_tag_gray = cv2.circle(cropped_tag_gray, (i,j), 4, (255,0,0), 2)
 
+            #Solve for angular rotation
+            x = upper_right_corner[0] - upper_left_corner[0]
+            y = upper_left_corner[1] - upper_right_corner[1]
+            theta = np.arctan2(y, x)
+            angle = np.rad2deg(theta)
+
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
-                cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
+                if id == detected_tags[0].id or id == detected_tags[1].id or id == detected_tags[2].id:
+                    cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
+                else:
+                    cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
             elif SHOW_TAG_IDENTIFICATION:
                 outlined_tags = cropped_tag_gray
 
@@ -175,6 +293,15 @@ def main_camera():
                 end_point = (int(center[0] + length*np.cos(theta)), int(center[1] + length*np.sin(-1*theta)))
                 cv2.line(outlined_tags, center, end_point, (0,0,255), 3)
 
+            #Create UI information for each tag
+            imgui.text("\n")
+            imgui.text(str(id))
+            imgui.text("Center: (" + str(center[0]) + ", " + str(center[1]) + ")")
+            imgui.text("Angle: " + str(angle))
+            imgui.text("\n")
+
+        imgui.end_child()
+
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
         
@@ -182,8 +309,10 @@ def main_camera():
         fps = int(1 / (current_time - previous_time))
         previous_time = current_time
         imgui.text("Framerate: " + str(fps))
-        imgui.text("ID: " + str(id))
-        imgui.text("Angle: " + str(angle))
+
+        #Re-Auto Detect Boundaries Button
+        if imgui.button('Detect Bounds'):
+            auto_detect_boundaries()
 
         #Create vehicle UI checkboxes
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
