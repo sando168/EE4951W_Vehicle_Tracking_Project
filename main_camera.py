@@ -277,16 +277,24 @@ def main_camera():
             theta = np.arctan2(y, x)
             angle = np.rad2deg(theta)
 
+            #Transform center coordinates from (U,V) -> (X,Y)
+            center_img = center
+            center = (center[0], RESOLUTION_HEIGHT-center[1])
+
+            #Transform center coordinates from (X,Y) -> Reference to origin
+            origin = (detected_tags[0].position[0], RESOLUTION_HEIGHT-detected_tags[0].position[1])
+            center = (center[0]-origin[0], center[1]-origin[1])
+
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
                 if id == detected_tags[0].id:
-                    cv2.putText(outlined_tags, 'Origin', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
+                    cv2.putText(outlined_tags, 'Origin', (center_img[0]+25, center_img[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
                     cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
                 elif id == detected_tags[1].id:
-                    cv2.putText(outlined_tags, 'Top', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
+                    cv2.putText(outlined_tags, 'Top', (center_img[0]+25, center_img[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
                     cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
                 elif id == detected_tags[2].id:
-                    cv2.putText(outlined_tags, 'Right', (center[0]+25, center[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
+                    cv2.putText(outlined_tags, 'Right', (center_img[0]+25, center_img[1]+10), cv2.FONT_HERSHEY_DUPLEX, 1, (0,255,0), 1, cv2.LINE_AA)
                     cv2.drawContours(outlined_tags, [corners], 0, (0,255,0), 3)
                 else:
                     cv2.drawContours(outlined_tags, [corners], 0, (255,0,0), 3)
@@ -297,8 +305,8 @@ def main_camera():
             if OUTLINE_ANGLE:
                 length = np.linalg.norm(np.array([x, y]))
                 length = int(length / 2)
-                end_point = (int(center[0] + length*np.cos(theta)), int(center[1] + length*np.sin(-1*theta)))
-                cv2.line(outlined_tags, center, end_point, (0,0,255), 3)
+                end_point = (int(center_img[0] + length*np.cos(theta)), int(center_img[1] + length*np.sin(-1*theta)))
+                cv2.line(outlined_tags, center_img, end_point, (0,0,255), 3)
 
             #Create UI information for each tag
             imgui.text("\n")
@@ -306,8 +314,6 @@ def main_camera():
             imgui.text("Center: (" + str(center[0]) + ", " + str(center[1]) + ")")
             imgui.text("Angle: " + str(angle))
             imgui.text("\n")
-
-        imgui.end_child()
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
@@ -327,6 +333,7 @@ def main_camera():
         _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
 
         #Vehicle UI end
+        imgui.end_child()
         imgui.end()
         
         gl.glClearColor(1., 1., 1., 1)
