@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #define LEFT_A 13
 #define LEFT_B 14
 #define RIGHT_A 25
@@ -6,14 +9,13 @@
 #define MOTOR_PWM 255
 #define DELAY_TIME 600
 #define LOOP_COUNT 5
+#define error 200
 
 static bool touched = false;
-int destiX = 2; 
-int destiY = 2;  
+int destX = 2; 
+int destY = 2;  
 int currX = 0; 
-int currY = 0;  
-int doneX = 0; 
-int doneY = 0; 
+int currY = 0; 
 
 void IRAM_ATTR isr()
 {
@@ -72,51 +74,36 @@ void motor(int left, int right)
   }
 }
 
+void moveVehicle(int currX, int currY, int destX, int destY)
+{
+  if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
+  {
+    motor(150, 70); 
+    delay(200); 
+  }
+  else if ((currX - destX) > error && (destY - currY) > error)    //destination is on the left of the starting position 
+  {
+    motor(70, 150); 
+    delay(200); 
+  }
+  else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
+  {
+    motor(100, 100); 
+    delay(200); 
+  }
+  else if ((destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
+  {
+    motor(100, 100); 
+    delay(200); 
+  }
+  else if (abs(destX - currX) < error && abs(destY - currY) < error)  //arrived at the destination 
+  {
+    motor(0,0);   //stop 
+  }
+}
+
 void loop()
 {
-  while (doneY == 0){
-    if (currY < destiY)
-    {
-      Serial.println("Go forward Y"); 
-      currY++; 
-    }
-    else if (currY > destiY)
-    {
-      Serial.println("Go backward Y"); 
-      currY--; 
-    }
-    else
-    {
-      doneY = 1; 
-      Serial.println("DoneY"); 
-      Serial.println("Turn right");  
-    }
-  }
-  while (doneX == 0){
-    if (currX < destiX)
-    {
-      Serial.println("Go forward X"); 
-      currX++; 
-    }
-    else if (currX > destiX)
-    {
-      Serial.println("Go backward X"); 
-      currX--; 
-    }
-    else
-    {
-      doneX = 1; 
-      Serial.println("DoneX");
-    }
-  }
-  if (doneX == 1 && doneY == 1){
-    //send complete
-    Serial.println("Complete");
-  }
-  if (destiX != currX || destiY != currY){
-    doneX = 0; 
-    doneY = 0; 
-    Serial.println("New job!!!");  
-  }
-  delay(2000); 
+  //take input of currX, currY, destY, destX from the computer 
+  moveVehicle(currX, currY, destX, destY); 
 }
