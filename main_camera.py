@@ -223,7 +223,7 @@ def main_camera():
         outlined_tags = new_frame
         id = BitArray(0)
         angle = 0
-        imgui.begin_child("Detected Tags")
+        #imgui.begin_child("Detected Tags")
         for tag in tags:
 
             outlined_tags = new_frame
@@ -286,11 +286,10 @@ def main_camera():
             origin = (detected_tags[0].position[0], RESOLUTION_HEIGHT-detected_tags[0].position[1])
             center = (center[0]-origin[0], center[1]-origin[1])
 
-            #Transform center coordinates from pixels -> unit dimensions
-            x_dimension_per_pixel = AREA_WIDTH / detected_tags[2].position[0]
-            y_dimension_per_pixel = AREA_HEIGHT / detected_tags[1].position[1]
-            center[0] = center[0] / x_dimension_per_pixel
-            center[1] = center[1] / y_dimension_per_pixel
+            #Transform center coordinates from pixels -> unit dimensions (ft, cm)
+            x_dimension_per_pixel = AREA_WIDTH / (detected_tags[2].position[0] - origin[0] + 0.000001)
+            y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
+            center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
@@ -338,15 +337,13 @@ def main_camera():
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
         _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
         _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
-
-        #Vehicle UI end
-        imgui.end_child()
-        imgui.end()
         
         gl.glClearColor(1., 1., 1., 1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
+        imgui.end()
         imgui.render()
+        imgui.end_frame()
         impl.render(imgui.get_draw_data())
         glfw.swap_buffers(gui)
 
