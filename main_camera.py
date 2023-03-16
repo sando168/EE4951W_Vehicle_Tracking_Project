@@ -16,6 +16,8 @@ GUI_HEIGHT = 480
 RESOLUTION_WIDTH = 1024
 RESOLUTION_HEIGHT = 768
 TAG_GRID_SIZE = 8
+AREA_WIDTH = 4      #4ft
+AREA_HEIGHT = 2.5   #2.5ft
 OUTLINE_TAGS = False
 OUTLINE_ANGLE = False
 SHOW_TAG_IDENTIFICATION = False
@@ -240,7 +242,6 @@ def main_camera():
 
             #Solve tag ID by setting black squares = 0 and white squares = 1
             #Create bit string with MSB in top left, and LSB in bottom right
-
             #1. Using the detected corners on the tag, set target corners to warp the tag corners to
             target_corners = np.float32([[1,1],
                                          [1, RESOLUTION_HEIGHT-1],
@@ -284,6 +285,12 @@ def main_camera():
             #Transform center coordinates from (X,Y) -> Reference to origin
             origin = (detected_tags[0].position[0], RESOLUTION_HEIGHT-detected_tags[0].position[1])
             center = (center[0]-origin[0], center[1]-origin[1])
+
+            #Transform center coordinates from pixels -> unit dimensions
+            x_dimension_per_pixel = AREA_WIDTH / detected_tags[2].position[0]
+            y_dimension_per_pixel = AREA_HEIGHT / detected_tags[1].position[1]
+            center[0] = center[0] / x_dimension_per_pixel
+            center[1] = center[1] / y_dimension_per_pixel
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
