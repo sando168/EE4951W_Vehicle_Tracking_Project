@@ -84,6 +84,7 @@ def setup_camera():
 #Setup function for determining the boundary tags within the frame
 #Can be called by user within the UI for resetting bounds
 def auto_detect_boundaries():
+    
     global detected_tags
 
     #Retrieve new frame from camera
@@ -173,6 +174,11 @@ def auto_detect_boundaries():
             detected_tags[2].id = id
             detected_tags[2].position = center
             detected_tags[2].angle = angle
+
+#Bind IP address to tag ID by capturing image of tag
+#Called by user when they push UI button
+def bind_tag_to_IP(ip_addr):
+    print(ip_addr)
 
 
 #Start of Camera Code
@@ -333,6 +339,12 @@ def main_camera():
         #Re-Auto Detect Boundaries Button
         if imgui.button('Detect Bounds'):
             auto_detect_boundaries()
+
+        ip_addr = 'IP Address'
+        imgui.input_text('0.0.0.0', ip_addr, 50)
+        imgui.same_line()
+        if imgui.button('Capture'):
+            bind_tag_to_IP(ip_addr)
 
         #Create vehicle UI checkboxes
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
