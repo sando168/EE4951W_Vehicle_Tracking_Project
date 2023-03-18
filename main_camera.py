@@ -101,6 +101,11 @@ def auto_detect_boundaries():
     #Detect AprilTags
     tags = tag_detector.detect(new_frame_gray)
 
+    #Need at least 3 tags for boundaries
+    if len(tags) < 3:
+        print('ERROR: Unable to detect boundaries. Only ' + str(len(tags)) + ' detected. Need at least 3 tags.')
+        return
+
     #Iterate for each tag detected
     for tag in tags:
 
@@ -177,9 +182,87 @@ def auto_detect_boundaries():
 
 #Bind IP address to tag ID by capturing image of tag
 #Called by user when they push UI button
-def bind_tag_to_IP(ip_addr):
-    print(ip_addr)
+def add_tag(ip_addr):
 
+    global detected_tags
+
+    #Retrieve new frame from camera
+    ret, new_frame = camera.read()
+
+    #Check if new_frame is correct
+    if not(ret):
+        print('ERROR: Invalid new camera frame')
+        exit(1)
+
+    #Convert new frame to gray scale
+    new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
+
+    #Detect AprilTags
+    tags = tag_detector.detect(new_frame_gray)
+
+    #Should only see 1 tag when adding
+    if len(tags) > 1:
+        print('ERROR: Unable to add tag. Multiple tags detected.')
+        return
+    elif len(tags) == 0:
+        print('ERROR: Unable to add tag. None detected')
+        return
+
+    #Iterate for each tag detected
+    for tag in tags:
+
+        cropped_tag = new_frame_gray
+        
+        #Cast corners to tuple integer pairs
+        center = (int(tag.center[0]), int(tag.center[1]))
+        upper_left_corner = (int(tag.corners[0][0]), int(tag.corners[0][1]))
+        upper_right_corner = (int(tag.corners[1][0]), int(tag.corners[1][1]))
+        bottom_right_corner = (int(tag.corners[2][0]), int(tag.corners[2][1]))
+        bottom_left_corner = (int(tag.corners[3][0]), int(tag.corners[3][1]))
+        corners = np.array([[upper_left_corner[0],   upper_left_corner[1]],
+                            [upper_right_corner[0],  upper_right_corner[1]],
+                            [bottom_right_corner[0], bottom_right_corner[1]],
+                            [bottom_left_corner[0],  bottom_left_corner[1]]])
+
+        #Solve tag ID by setting black squares = 0 and white squares = 1
+        #Create bit string with MSB in top left, and LSB in bottom right
+
+        #1. Using the detected corners on the tag, set target corners to warp the tag corners to
+        target_corners = np.float32([[1,1],
+                                        [1, RESOLUTION_HEIGHT-1],
+                                        [RESOLUTION_WIDTH-1, RESOLUTION_HEIGHT-1],
+                                        [RESOLUTION_WIDTH-1, 1]])
+        corners_h = np.float32(corners)
+        tag_homography = cv2.getPerspectiveTransform(corners_h, target_corners)
+        cropped_tag = new_frame_gray
+        cropped_tag = cv2.warpPerspective(cropped_tag, tag_homography, (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), flags=cv2.INTER_LINEAR)
+
+        #2. Iterate across squares on tag grid sampling from top left to bottom right
+        #Iterate across rows of pixels
+        height_step = int(RESOLUTION_WIDTH/TAG_GRID_SIZE)
+        width_step = int(RESOLUTION_HEIGHT/TAG_GRID_SIZE)
+        id = BitArray(0)
+        for i in range(int(height_step/2), RESOLUTION_WIDTH-1, height_step):
+
+            #Iterate across columns of pixels
+            for j in range(int(width_step/2), RESOLUTION_HEIGHT-1, width_step):
+
+                #White grid space
+                if (cropped_tag[j][i] >= 90):
+                    id.append('0b1')
+                #Black grid space
+                else:
+                    id.append('0b0')
+
+    new_tag = ATag(ip_addr, id, (0,0), 0)
+
+    #Check if tag has already been added
+    for tag in detected_tags:
+        if tag.id == new_tag.id:
+            print('ERROR: Unable to add tag. Already added.')
+            return
+
+    detected_tags.append(new_tag)
 
 #Start of Camera Code
 def main_camera():
@@ -200,6 +283,7 @@ def main_camera():
     #Time variables for measuring framerate
     previous_time = 1
     current_time = 1
+    ip_addr = 'IP Address'
     #Start of while(1) loop that runs forever
     while not(glfw.window_should_close(gui)) and camera.isOpened():
 
@@ -208,6 +292,25 @@ def main_camera():
         impl.process_inputs()
         imgui.new_frame()
         imgui.begin("Vehicle UI")
+
+        #Update data on vehicle UI
+        fps = int(1 / (current_time - previous_time + 0.00000001))
+        previous_time = current_time
+        imgui.text("Framerate: " + str(fps))
+
+        #Re-Auto Detect Boundaries Button
+        if imgui.button('Detect Bounds'):
+            auto_detect_boundaries()
+
+        ip_addr = imgui.input_text('', ip_addr, 50)[1]
+        imgui.same_line()
+        if imgui.button('Capture'):
+            add_tag(ip_addr)
+
+        #Create vehicle UI checkboxes
+        _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
+        _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
+        _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
 
         #Update timers
         current_time = time.perf_counter() 
@@ -229,7 +332,6 @@ def main_camera():
         outlined_tags = new_frame
         id = BitArray(0)
         angle = 0
-        #imgui.begin_child("Detected Tags")
         for tag in tags:
 
             outlined_tags = new_frame
@@ -329,26 +431,6 @@ def main_camera():
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
-        
-        #Update data on vehicle UI
-        fps = int(1 / (current_time - previous_time))
-        previous_time = current_time
-        imgui.text("Framerate: " + str(fps))
-
-        #Re-Auto Detect Boundaries Button
-        if imgui.button('Detect Bounds'):
-            auto_detect_boundaries()
-
-        ip_addr = 'IP Address'
-        imgui.input_text('0.0.0.0', ip_addr, 50)
-        imgui.same_line()
-        if imgui.button('Capture'):
-            bind_tag_to_IP(ip_addr)
-
-        #Create vehicle UI checkboxes
-        _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
-        _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
-        _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
         
         gl.glClearColor(1., 1., 1., 1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
