@@ -15,6 +15,7 @@
 Run these commands in a Linux terminal.
 ```
 sudo apt install cmake
+sudo apt-get install python3-tk
 pip3 install opencv-python
 pip3 install imgui[all]
 

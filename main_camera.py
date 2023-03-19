@@ -2,6 +2,10 @@
 import cv2
 import apriltag
 import numpy as np
+import json
+import os
+from tkinter import *
+from tkinter import filedialog
 from bitstring import BitArray
 
 import imgui
@@ -181,7 +185,7 @@ def auto_detect_boundaries():
             detected_tags[2].angle = angle
 
 #Bind IP address to tag ID by capturing image of tag
-#Called by user when they push UI button
+#Called by user when they push UI "Capture" button
 def add_tag(ip_addr):
 
     global detected_tags
@@ -264,6 +268,48 @@ def add_tag(ip_addr):
 
     detected_tags.append(new_tag)
 
+#Save all added tags to JSON file
+#Called by user when they push UI "Save" button
+def save_tags(filename):
+
+    #Iterate over array of vehicle and boundary tags
+    with open(filename + '.json', 'w') as outfile:
+        outfile.write("{ \"tags\": [")
+
+        for tag in detected_tags:
+            json_data =  {
+                "name" : str(tag.descriptor),
+                "id" : str(tag.id),
+                "position" : tag.position,
+                "angle" : tag.angle
+            }
+            json_data = json.dumps(json_data, indent=4)
+            outfile.write(json_data)
+            if tag != detected_tags[len(detected_tags)-1]:
+                outfile.write(', ')
+
+        outfile.write("]}")
+    
+#Open and load configuration file with already added tags
+#Called by user when they push "Open" UI button
+def open_tags():
+
+    #Select file with explorer and return specific string
+    config_file = filedialog.askopenfilename(title="Select a json file", filetypes=[("JSON files", "*.json*")])
+
+    #Open selected file
+    with open(config_file, "r") as openfile:
+        json_object = json.load(openfile)
+        json_object = json_object['tags']
+
+        #Iterate through each tag in JSON file and add to detected_tags
+        detected_tags.clear()
+        for tag in json_object:
+            new_tag = ATag(tag["name"], tag["id"], tag["position"], tag["angle"])
+            detected_tags.append(new_tag)
+    
+    print(len(detected_tags))
+
 #Start of Camera Code
 def main_camera():
     global OUTLINE_TAGS
@@ -275,7 +321,6 @@ def main_camera():
     setup_camera()
     gui = setup_gui()
     imgui.create_context()
-    #imgui.get_io().display_size = GUI_WIDTH, GUI_HEIGHT
     imgui.get_io().fonts.get_tex_data_as_rgba32()
     impl = GlfwRenderer(gui)
     auto_detect_boundaries()
@@ -284,6 +329,7 @@ def main_camera():
     previous_time = 1
     current_time = 1
     ip_addr = 'IP Address'
+    filename = 'Filename'
     #Start of while(1) loop that runs forever
     while not(glfw.window_should_close(gui)) and camera.isOpened():
 
@@ -302,17 +348,27 @@ def main_camera():
         if imgui.button('Detect Bounds'):
             auto_detect_boundaries()
 
-        ip_addr = imgui.input_text('', ip_addr, 50)[1]
+        #Capture and add new tag UI
+        has_changed, ip_addr = imgui.input_text('', ip_addr, 50)
         imgui.same_line()
         if imgui.button('Capture'):
             add_tag(ip_addr)
+
+        #Save list and open list of tags UI
+        has_change, filename = imgui.input_text('', filename, 50)
+        imgui.same_line()
+        if imgui.button('Save'):
+            save_tags(filename)
+        imgui.same_line()
+        if imgui.button('Open'):
+            open_tags()
 
         #Create vehicle UI checkboxes
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
         _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
         _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
 
-        #Update timers
+        #Update timers for FPS
         current_time = time.perf_counter() 
 
         #Retrieve new frame from camera
