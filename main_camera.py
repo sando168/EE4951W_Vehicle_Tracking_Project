@@ -34,19 +34,21 @@ class ATag:
     descriptor = 'tag'
     id = BitArray(0)
     position = (0,0)
+    desired_pos = (0,0)
     angle = 0.0
 
-    def __init__ (self, descr, id, pos, angle):
+    def __init__ (self, descr, id, pos, angle, des):
         self.descriptor = descr
         self.id = id
         self.position = pos
         self.angle = angle
+        self.desired_pos = des
 
 #Dynamic array of detected tags including the tags outlining the boundaries of the play field
 #The first three entries in the array are fixed in the order below
-world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0)
-top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0)
-right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0)
+world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0, (0,0))
+top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0, (0,0))
+right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
 detected_tags = [world_coordinate, top_bound, right_bound]
 
 #Setup function for creating vehicle UI window
@@ -259,7 +261,7 @@ def add_tag(ip_addr):
                 else:
                     id.append('0b0')
 
-    new_tag = ATag(ip_addr, id, (0,0), 0)
+    new_tag = ATag(ip_addr, id, (0,0), 0, (0,0))
 
     #Check if tag has already been added
     for tag in detected_tags:
@@ -282,7 +284,8 @@ def save_tags(filename):
                 "name" : str(tag.descriptor),
                 "id" : str(tag.id),
                 "position" : tag.position,
-                "angle" : tag.angle
+                "angle" : tag.angle,
+                "desired pos": tag.desired_pos
             }
             json_data = json.dumps(json_data, indent=4)
             outfile.write(json_data)
@@ -306,7 +309,7 @@ def open_tags():
         #Iterate through each tag in JSON file and add to detected_tags
         detected_tags.clear()
         for tag in json_object:
-            new_tag = ATag(tag["name"], tag["id"], tag["position"], tag["angle"])
+            new_tag = ATag(tag["name"], tag["id"], tag["position"], tag["angle"], tag["desired pos"])
             detected_tags.append(new_tag)
     
     print(len(detected_tags))
@@ -332,6 +335,7 @@ def main_camera():
     current_time = 1
     ip_addr = 'IP Address'
     filename = 'Filename'
+    set_pos = '(0,0)'
     #Start of while(1) loop that runs forever
     while not(glfw.window_should_close(gui)) and camera.isOpened():
 
@@ -464,13 +468,20 @@ def main_camera():
                     added_tag.angle = angle
                     added_tag.position = center
 
-                    #Display tag information on UI if selected
-                    if LIST_TAGS:
-                        imgui.text("\n")
-                        imgui.text(added_tag.descriptor)
-                        imgui.text(str(added_tag.id))
-                        imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
-                        imgui.text("Angle: " + "{:.2f}".format(angle))
+                #Display tag information on UI if selected
+                if LIST_TAGS:
+                    imgui.text("\n")
+                    imgui.text(added_tag.descriptor)
+                    imgui.text(str(added_tag.id))
+                    imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
+                    imgui.text("Angle: " + "{:.2f}".format(angle))
+                    has_changed, set_pos = imgui.input_text('##'+str(added_tag.id), 'Desired Pos', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+                    imgui.same_line()
+                    if (imgui.button('Set')):
+                        coords = tuple(map(int, set_pos.split(',')))
+                        print(coords)
+                        added_tag.desired_pos = coords
+                    imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
