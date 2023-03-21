@@ -25,6 +25,7 @@ AREA_HEIGHT = 2.5   #2.5ft
 OUTLINE_TAGS = False
 OUTLINE_ANGLE = False
 SHOW_TAG_IDENTIFICATION = False
+LIST_TAGS = True
 video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
 camera = cv2.VideoCapture(0)                            #Open video camera
 tag_detector = apriltag.Detector()                      #Create tag detection object
@@ -315,6 +316,7 @@ def main_camera():
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
     global SHOW_TAG_IDENTIFICATION
+    global LIST_TAGS
     global detected_tags
 
     #Setup functions
@@ -349,13 +351,13 @@ def main_camera():
             auto_detect_boundaries()
 
         #Capture and add new tag UI
-        has_changed, ip_addr = imgui.input_text('', ip_addr, 50)
+        has_changed, ip_addr = imgui.input_text('##ip', ip_addr, 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
         imgui.same_line()
         if imgui.button('Capture'):
             add_tag(ip_addr)
 
         #Save list and open list of tags UI
-        has_change, filename = imgui.input_text('', filename, 50)
+        has_changed, filename = imgui.input_text('##file', filename, 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
         imgui.same_line()
         if imgui.button('Save'):
             save_tags(filename)
@@ -367,6 +369,7 @@ def main_camera():
         _, OUTLINE_TAGS = imgui.checkbox("Outline Tags", OUTLINE_TAGS)
         _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
         _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
+        _, LIST_TAGS = imgui.checkbox("List Tags", LIST_TAGS)
 
         #Update timers for FPS
         current_time = time.perf_counter() 
@@ -455,6 +458,20 @@ def main_camera():
             y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
             center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
 
+            #Update list of added tags
+            for added_tag in detected_tags:
+                if added_tag.id == str(id):
+                    added_tag.angle = angle
+                    added_tag.position = center
+
+                    #Display tag information on UI if selected
+                    if LIST_TAGS:
+                        imgui.text("\n")
+                        imgui.text(added_tag.descriptor)
+                        imgui.text(str(added_tag.id))
+                        imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
+                        imgui.text("Angle: " + "{:.2f}".format(angle))
+
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
                 if id == detected_tags[0].id:
@@ -477,13 +494,6 @@ def main_camera():
                 length = int(length / 2)
                 end_point = (int(center_img[0] + length*np.cos(theta)), int(center_img[1] + length*np.sin(-1*theta)))
                 cv2.line(outlined_tags, center_img, end_point, (0,0,255), 3)
-
-            #Create UI information for each tag
-            imgui.text("\n")
-            imgui.text(str(id))
-            imgui.text("Center: (" + str(center[0]) + ", " + str(center[1]) + ")")
-            imgui.text("Angle: " + str(angle))
-            imgui.text("\n")
 
         #Display video stream
         cv2.imshow(video_stream_title, outlined_tags)
