@@ -476,11 +476,17 @@ def main_camera():
                     imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
                     imgui.text("Angle: " + "{:.2f}".format(angle))
                     has_changed, set_pos = imgui.input_text('##'+str(added_tag.id), 'Desired Pos', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
-                    imgui.same_line()
-                    if (imgui.button('Set')):
-                        coords = tuple(map(int, set_pos.split(',')))
-                        print(coords)
-                        added_tag.desired_pos = coords
+                    if (has_changed):
+                        coords = tuple(map(float, set_pos.split(',')))
+                        #Check for valid input
+                        if len(coords) == 2:
+                            #Check if input is in play area bounds
+                            if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
+                                added_tag.desired_pos = coords
+                            else:
+                                print('ERROR: Unable to set position. Not within pleay area bounds.')
+                        else:
+                            print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma.')
                     imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
 
             #Draw the arbitrary contour from corners since the tag could be rotated
