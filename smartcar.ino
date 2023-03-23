@@ -11,16 +11,10 @@
 #define LOOP_COUNT 5
 #define error 200
 
-static bool touched = false;
 int destX = 2; 
 int destY = 2;  
 int currX = 0; 
 int currY = 0; 
-
-void IRAM_ATTR isr()
-{
-  touched = true;
-}
 
 void setup()
 {
@@ -74,6 +68,27 @@ void motor(int left, int right)
   }
 }
 
+void loop()
+{
+  //take input of currX, currY, destY, destX from the computer 
+  //moveVehicle(currX, currY, destX, destY); 
+  while(1){
+    motor(0,0);    
+  }
+}
+
+
+
+/*
+ * 
+ * 
+static bool touched = false;
+
+void IRAM_ATTR isr()
+{
+  touched = true;
+}
+
 void moveVehicle(int currX, int currY, int destX, int destY)
 {
   if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
@@ -102,9 +117,5 @@ void moveVehicle(int currX, int currY, int destX, int destY)
   }
 }
 
-void loop()
-{
-  while(1){
-    motor(0,0);    //turn off the left motor and the right motor
-  }
-}
+*/
+ */
