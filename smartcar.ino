@@ -3,8 +3,8 @@
 
 #define LEFT_A 13
 #define LEFT_B 14
-#define RIGHT_A 25
-#define RIGHT_B 26
+#define RIGHT_A 21
+#define RIGHT_B 22
 
 #define MOTOR_PWM 255
 #define DELAY_TIME 600
@@ -104,6 +104,7 @@ void moveVehicle(int currX, int currY, int destX, int destY)
 
 void loop()
 {
-  //take input of currX, currY, destY, destX from the computer 
-  moveVehicle(currX, currY, destX, destY); 
+  while(1){
+    motor(0,0);    //turn off the left motor and the right motor
+  }
 }
