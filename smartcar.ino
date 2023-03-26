@@ -11,16 +11,24 @@
 #define LOOP_COUNT 5
 #define error 200
 
-int destX = 2; 
-int destY = 2;  
-int currX = 0; 
-int currY = 0; 
+float destX; 
+float destY;  
+float currX; 
+float currY; 
+float currR; 
+float distance; 
+float angle; 
+
+char command;    // "u 2.435 5.687 113.09" update posistion 
+float value1;    // parsing will update these values  
+float value2; 
+float value3; 
 
 void setup()
 {
   Serial.begin(115200); 
   pinMode(38, INPUT_PULLUP);
-  attachInterrupt(38, isr, FALLING);
+  //attachInterrupt(38, isr, FALLING);
 
   ledcAttachPin(LEFT_A, 1);  // assign LEFT_A pin to channel 1
   ledcSetup(1, 12000, 8);    // 12 kHz PWM, 8-bit resolution
@@ -68,13 +76,51 @@ void motor(int left, int right)
   }
 }
 
-void loop()
+void moveVehicle(int currX, int currY, int destX, int destY)
 {
-  //take input of currX, currY, destY, destX from the computer 
-  //moveVehicle(currX, currY, destX, destY); 
-  while(1){
-    motor(0,0);    
+  if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
+  {
+    motor(150, 70); 
+    delay(200); 
   }
+  else if ((currX - destX) > error && (destY - currY) > error)    //destination is on the left of the starting position 
+  {
+    motor(70, 150); 
+    delay(200); 
+  }
+  /*else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
+  {
+    motor(100, 100); 
+    delay(200); 
+  }*/
+  else if (abs(destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
+  {
+    motor(100, 100); 
+    delay(200); 
+  }
+  else if (abs(destX - currX) < error && abs(destY - currY) < error)  //arrived at the destination 
+  {
+    motor(0,0);   //stop 
+  }
+}
+
+void loop()
+{ 
+  switch(command)   //depending on the command, save the corresponding values 
+  {
+    case 'u':
+      currX = value1; 
+      currY = value2; 
+      currR = value3; 
+    case 'd': 
+      destX = value1; 
+      destY = value2; 
+    case 'm':
+      distance = value1; 
+    case 'r': 
+      angle = value1; 
+  }
+  moveVehicle(currX, currY, destX, destY); 
 }
 
 
@@ -88,34 +134,4 @@ void IRAM_ATTR isr()
 {
   touched = true;
 }
-
-void moveVehicle(int currX, int currY, int destX, int destY)
-{
-  if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
-  {
-    motor(150, 70); 
-    delay(200); 
-  }
-  else if ((currX - destX) > error && (destY - currY) > error)    //destination is on the left of the starting position 
-  {
-    motor(70, 150); 
-    delay(200); 
-  }
-  else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
-  {
-    motor(100, 100); 
-    delay(200); 
-  }
-  else if ((destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
-  {
-    motor(100, 100); 
-    delay(200); 
-  }
-  else if (abs(destX - currX) < error && abs(destY - currY) < error)  //arrived at the destination 
-  {
-    motor(0,0);   //stop 
-  }
-}
-
 */
- */
