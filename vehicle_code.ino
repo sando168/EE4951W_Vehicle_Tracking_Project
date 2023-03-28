@@ -3,19 +3,28 @@
 
 #define LEFT_A 13
 #define LEFT_B 14
-#define RIGHT_A 25
-#define RIGHT_B 26
+#define RIGHT_A 21
+#define RIGHT_B 22
 
 #define MOTOR_PWM 255
 #define DELAY_TIME 600
 #define LOOP_COUNT 5
 #define error 200
 
-static bool touched = false;
-int destX = 2; 
-int destY = 2;  
-int currX = 0; 
-int currY = 0; 
+float destX; 
+float destY;  
+float currX; 
+float currY; 
+float currAngle; 
+float distance; 
+float angle; 
+                 // "u 2.435 5.687 113.09" ---> updatePosistion(value1, value2, value3) 
+char command;    // first char of command determines what command it is (ex. 'u' correspond to updatePostion command)
+float value1;    // parsing will update these values  
+float value2; 
+float value3; 
+
+/* ----- Global Variables for WiFi Functionality (Enterprise Network) ----- */
 
 #include <WiFi.h>
 #include "esp_wpa2.h"                     // wpa2 library for connections to Enterprise networks
@@ -28,16 +37,11 @@ const uint ServerPort = 23;
 WiFiServer Server(ServerPort);            // initialize server
 WiFiClient RemoteClient;                  // instantiate WiFiClient to store client info
 
-void IRAM_ATTR isr()
-{
-  touched = true;
-}
-
 void setup()
 {
   Serial.begin(115200); 
   pinMode(38, INPUT_PULLUP);
-  attachInterrupt(38, isr, FALLING);
+  //attachInterrupt(38, isr, FALLING);
 
   ledcAttachPin(LEFT_A, 1);  // assign LEFT_A pin to channel 1
   ledcSetup(1, 12000, 8);    // 12 kHz PWM, 8-bit resolution
@@ -48,6 +52,8 @@ void setup()
   ledcAttachPin(RIGHT_B, 4); // assign RIGHT_B pin to channel 4
   ledcSetup(4, 12000, 8);    // 12 kHz PWM, 8-bit resolution
   motor(0, 0);
+
+  /* ----- Wifi Initialization Starts Here ----- */
 
   Serial.print("Connecting to network: ");
   Serial.println(ssid);
@@ -112,6 +118,45 @@ void motor(int left, int right)
   }
 }
 
+void moveVehicle1(int currX, int currY, int angle, int destX, int destY){
+  if ((angle - 90) > 10){    //if angle difference is bigger than 10, then readjust the car
+    motor(50, 0);            //rotate to the right 
+    delay(200); 
+  }
+  else if ((90-angle) > 10){
+    motor(0, 50)             //rotate to the right 
+    delay(200); 
+  }
+  //now the car is straight and within error 
+  else if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
+  {
+    motor(50, 50); 
+    delay(200); 
+  }
+  else if ((currX - destX) > error && (destY - currY) > error)    //destination is on the left of the starting position 
+  {
+    motor(50, 50); 
+    delay(200); 
+  }
+  //now the car's y coordinate is the same as the destination's y coordinate 
+  else if (angle > 10 && destX > currX){             //rotate the car to the right 90 degrees because destination is on the right 
+    motor(50, 0); 
+    delay(200); 
+  }
+  else if ((180-angle) > 10 && destX < currX){         //rotate the car to the left 90 degrees because the destination is on the left
+    motor(0, 50); 
+    delay(200); 
+  }
+  else if (abs(destX - currX) > error && (destY - currY) < error){       //move the car forward in x axis until reaches the destination 
+    motor (50, 50); 
+    delay(200); 
+  }
+  else if (abs(destX - currX) < error && abs(destY - currY) < error)  //arrived at the destination 
+  {
+    motor(0,0);   //stop 
+  }
+}
+
 void moveVehicle(int currX, int currY, int destX, int destY)
 {
   if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
@@ -124,12 +169,12 @@ void moveVehicle(int currX, int currY, int destX, int destY)
     motor(70, 150); 
     delay(200); 
   }
-  else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
+  /*else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
   {
     motor(100, 100); 
     delay(200); 
-  }
-  else if ((destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
+  }*/
+  else if (abs(destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
   {
     motor(100, 100); 
     delay(200); 
@@ -141,20 +186,52 @@ void moveVehicle(int currX, int currY, int destX, int destY)
 }
 
 void loop()
-{
-  RemoteClient = Server.available();
+{ 
+  RemoteClient = Server.available();              // Instatiate object for storing remote client info
+  char data[21];                                  // make a char array to hold incoming data from the client
+  int i = 0;                                      // start index at 0
 
-  if (RemoteClient) {                             // if you get a client,
-    Serial.println("New Client.");                // print a message out the serial port
-    String currentLine = "";                      // make a String to hold incoming data from the client
-    while (RemoteClient.connected()) {            // loop while the client's connected
-      if (RemoteClient.available()) {             // if there's bytes to read from the client,
-        char c = RemoteClient.read();             // read a byte, then
-        Serial.write(c);                          // print it out the serial monitor
-        }
+  if (RemoteClient) {                             //if you get a client,
+    Serial.println("\nNew Client.");
+    while (RemoteClient.connected()) {            //    loop while there is a data stream connection
+      if (RemoteClient.available()) {             //    if there's bytes to read from the client,
+        data[i] = RemoteClient.read();            //        save byte/char to data char array
+        //Serial.write(c);                          //        print char out the serial monitor
+
+        RemoteClient.write("packet recieved");    //        acknowledge to client that packet was received by ESP32
       }
     }
+  }
+
+  char* space1;
+  char* space2;
+  char* space3;
   
-  //take input of currX, currY, destY, destX from the computer 
+  command = data[0];                        // save char indicating type of command
+  space1 = strstr(data, " ");               // find the first space (delimiter)
+
+  value1 = strtof(space1, &space2);         // save the first float value
+  value2 = strtof(space2, &space3);         // save the second float value
+  value3 = strtof(space3, NULL);            // save the third float value
+  
+  switch(command)   // depending on the command, save the corresponding values 
+  {
+    case 'u':
+      currX = value1; 
+      currY = value2; 
+      currAngle = value3;
+      break;
+    case 'd': 
+      destX = value1; 
+      destY = value2;
+      break;
+    case 'm':
+      distance = value1;
+      break;
+    case 'r': 
+      angle = value1;
+      break;
+  }
   moveVehicle(currX, currY, destX, destY); 
 }
+
