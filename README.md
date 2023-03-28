@@ -11,13 +11,34 @@
 - [Python 3](https://www.python.org/downloads/)
 - [Pip3](https://www.geeksforgeeks.org/how-to-install-pip-on-windows/)
 
-# Installation
+# Installation: Linux
 Run these commands in a Linux terminal.
 ```
 sudo apt install cmake
 sudo apt-get install python3-tk
 pip3 install opencv-python
 pip3 install imgui[all]
+
+git clone https://github.com/swatbotics/apriltag.git
+cd apriltag
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j4
+sudo make install
+pip3 install apriltag
+```
+
+# Installation: Windows
+Run these commands in a Windows terminal.
+```
+sudo apt install cmake
+pip3 install tk
+pip3 install opencv-python
+pip3 install imgui[all]
+pip3 install glfw
+pip install PyOpenGL
+
 
 git clone https://github.com/swatbotics/apriltag.git
 cd apriltag
