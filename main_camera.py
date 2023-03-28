@@ -1,6 +1,6 @@
 
 import cv2
-import apriltag
+import pupil_apriltags as apriltag
 import numpy as np
 import json
 import os

@@ -7,7 +7,6 @@
 - The vehicles should be able to follow a specified path.
 
 # Prerequisites
-- Linux or [Virtual Box](https://www.virtualbox.org/)
 - [Python 3](https://www.python.org/downloads/)
 - [Pip3](https://www.geeksforgeeks.org/how-to-install-pip-on-windows/)
 
@@ -18,6 +17,7 @@ sudo apt install cmake
 sudo apt-get install python3-tk
 pip3 install opencv-python
 pip3 install imgui[all]
+pip3 install bitstring
 
 git clone https://github.com/swatbotics/apriltag.git
 cd apriltag
@@ -32,27 +32,19 @@ pip3 install apriltag
 # Installation: Windows
 Run these commands in a Windows terminal.
 ```
-sudo apt install cmake
+pip3 install cmake
+pip3 install pupil-apriltags
 pip3 install tk
 pip3 install opencv-python
 pip3 install imgui[all]
 pip3 install glfw
-pip install PyOpenGL
-
-
-git clone https://github.com/swatbotics/apriltag.git
-cd apriltag
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
-sudo make install
-pip3 install apriltag
+pip3 install PyOpenGL
+pip3 install bitstring
 ```
 
 # Execution
 ```
-python3 apriltag_example.py
+python3 main_camera.py
 ```
 
 # VirtualBox
@@ -113,5 +105,5 @@ pip3 install apriltag
 
 git clone https://github.umn.edu/bensc010/EE4951W_Vehicle_Tracking_Project
 cd EE4951W_Vehicle_Tracking_Project
-python3 apriltag_example.py
+python3 main_camera.py
 ```
