@@ -335,7 +335,7 @@ def main_camera():
     current_time = 1
     ip_addr = 'IP Address'
     filename = 'Filename'
-    set_pos = '(0,0)'
+    set_pos = '0,0'
     #Start of while(1) loop that runs forever
     while not(glfw.window_should_close(gui)) and camera.isOpened():
 
@@ -374,6 +374,47 @@ def main_camera():
         _, OUTLINE_ANGLE = imgui.checkbox("Outline Angles", OUTLINE_ANGLE)
         _, SHOW_TAG_IDENTIFICATION = imgui.checkbox("Tag Identification", SHOW_TAG_IDENTIFICATION)
         _, LIST_TAGS = imgui.checkbox("List Tags", LIST_TAGS)
+
+        #Update list of added tags
+        for added_tag in detected_tags:
+                
+            #Display tag information on UI if selected
+            if LIST_TAGS:
+                imgui.text("\n")
+                imgui.text(added_tag.descriptor)
+                imgui.text(str(added_tag.id))
+
+                center = (added_tag.position[0], RESOLUTION_HEIGHT-added_tag.position[1])
+
+                #Transform center coordinates from (X,Y) -> Reference to origin
+                origin = (detected_tags[0].position[0], RESOLUTION_HEIGHT-detected_tags[0].position[1])
+                center = (center[0]-origin[0], center[1]-origin[1])
+
+                #Transform center coordinates from pixels -> unit dimensions (ft, cm)
+                x_dimension_per_pixel = AREA_WIDTH / (detected_tags[2].position[0] - origin[0] + 0.000001)
+                y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
+                center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
+
+                imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
+                imgui.text("Angle: " + "{:.2f}".format(added_tag.angle))
+
+                #Retrieve and display desired position from input text box
+                has_changed = False
+                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+                    has_changed, set_pos = imgui.input_text('##'+str(added_tag.id), 'Desired Pos', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+                if has_changed:
+                    coords = tuple(map(float, set_pos.split(',')))
+                    #Check for valid input
+                    if len(coords) == 2:
+                        #Check if input is in play area bounds
+                        if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
+                            added_tag.desired_pos = coords
+                        else:
+                            print('ERROR: Unable to set position. Not within pleay area bounds.')
+                    else:
+                        print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma.')
+                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+                    imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
 
         #Update timers for FPS
         current_time = time.perf_counter() 
@@ -464,30 +505,9 @@ def main_camera():
 
             #Update list of added tags
             for added_tag in detected_tags:
-                if added_tag.id == str(id):
+                if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
                     added_tag.angle = angle
                     added_tag.position = center
-
-                #Display tag information on UI if selected
-                if LIST_TAGS:
-                    imgui.text("\n")
-                    imgui.text(added_tag.descriptor)
-                    imgui.text(str(added_tag.id))
-                    imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
-                    imgui.text("Angle: " + "{:.2f}".format(angle))
-                    has_changed, set_pos = imgui.input_text('##'+str(added_tag.id), 'Desired Pos', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
-                    if (has_changed):
-                        coords = tuple(map(float, set_pos.split(',')))
-                        #Check for valid input
-                        if len(coords) == 2:
-                            #Check if input is in play area bounds
-                            if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
-                                added_tag.desired_pos = coords
-                            else:
-                                print('ERROR: Unable to set position. Not within pleay area bounds.')
-                        else:
-                            print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma.')
-                    imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:

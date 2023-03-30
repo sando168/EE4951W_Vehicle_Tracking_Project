@@ -36,6 +36,7 @@ pip3 install cmake
 pip3 install pupil-apriltags
 pip3 install tk
 pip3 install opencv-python
+pip3 install opencv-contrib-python
 pip3 install imgui[all]
 pip3 install glfw
 pip3 install PyOpenGL
