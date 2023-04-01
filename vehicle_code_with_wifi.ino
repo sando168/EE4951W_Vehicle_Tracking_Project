@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LEFT_A 13
+#define LEFT_A 33
 #define LEFT_B 14
 #define RIGHT_A 21
 #define RIGHT_B 22
