@@ -1,7 +1,9 @@
+#include <analogWrite.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LEFT_A 13
+#define LEFT_A 33
 #define LEFT_B 14
 #define RIGHT_A 21
 #define RIGHT_B 22
@@ -17,16 +19,16 @@ int destY = 2;
 int currX = 0; 
 int currY = 0; 
 
-void IRAM_ATTR isr()
-{
-  touched = true;
-}
+//void IRAM_ATTR isr()
+//{
+//  touched = true;
+//}
 
 void setup()
 {
   Serial.begin(115200); 
   pinMode(38, INPUT_PULLUP);
-  attachInterrupt(38, isr, FALLING);
+//  attachInterrupt(38, isr, FALLING);
 
   ledcAttachPin(LEFT_A, 1);  // assign LEFT_A pin to channel 1
   ledcSetup(1, 12000, 8);    // 12 kHz PWM, 8-bit resolution
@@ -105,6 +107,6 @@ void moveVehicle(int currX, int currY, int destX, int destY)
 void loop()
 {
   while(1){
-    motor(0,0);    //turn off the left motor and the right motor
+    motor(125,0);    //turn off the left motor and the right motor
   }
 }
