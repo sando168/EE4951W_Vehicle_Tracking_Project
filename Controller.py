@@ -200,6 +200,7 @@ def controller(mTCBuf, cTMBuf, xBuffer, yBuffer, rBuffer, visionBuffer, vehicle,
         tempY = yBuffer.get() if not yBuffer.empty() else -1
         tempR = rBuffer.get() if not rBuffer.empty() else -1
         # Waits for an input and stores it in temps
+        
         if temp == 1: # Exit
             break
         elif temp == 2: # Move to point
@@ -210,6 +211,10 @@ def controller(mTCBuf, cTMBuf, xBuffer, yBuffer, rBuffer, visionBuffer, vehicle,
                 cTMCond.notify()
         elif temp == 4: # Update position
             vehicle.updatePosition(tempX, tempY, tempR)
+        elif temp == 5: # Move distance
+            vehicle.moveDistance(tempX)
+        elif temp == 6: # Rotate
+            vehicle.rotate(tempX)
         else: # Invalid command, should never hit this, will error
             print("Invalid command")
     exit()
@@ -245,6 +250,16 @@ def main():
             xBuf.put(input("Enter x coordinate:"))
             yBuf.put(input("Enter y coordinate:"))
             rBuf.put(input("Enter r angle:"))
+            with mainToController:
+                mainToController.notify()
+        elif tmp == "moveDistance": # FOR TESTING ONLY #TODO: Remove this
+            mTCBuf.put(5)
+            xBuf.put(input("Enter distance:"))
+            with mainToController:
+                mainToController.notify()
+        elif tmp == "rotate": # FOR TESTING ONLY #TODO: Remove this
+            mTCBuf.put(6)
+            xBuf.put(input("Enter angle:"))
             with mainToController:
                 mainToController.notify()
         else:
