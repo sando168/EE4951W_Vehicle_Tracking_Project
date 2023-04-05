@@ -175,8 +175,10 @@ def setup():
     global controllerToMain # Controller to Main Condition
     controllerToMain = th.Condition()
     global controlThread # Controller Thread
-    controlThread = th.Thread(target=controller, args=(mTCBuf, cTMBuf, xBuf, yBuf, rBuf, visionBuf, v1,
-                                                       mainToController, controllerToMain))
+    controlThread = th.Thread(target=controller, args=(mTCBuf, cTMBuf, xBuf,
+                                                        yBuf, rBuf, visionBuf,
+                                                        v1, mainToController,
+                                                        controllerToMain))
     controlThread.start()
 
     global xComBuf # x coordinate communication buffer

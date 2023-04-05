@@ -4,6 +4,8 @@ from time import sleep
 def dummy(xBuf, yBuf, rBuf):
 
     def updateXYR(x, y, r):
+        # TODO: this only removes one element from the queue, not all
+        # fix that
         if(xBuf.empty()):
             xBuf.put(x)
         else:
