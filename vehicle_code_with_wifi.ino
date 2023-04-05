@@ -150,15 +150,15 @@ void loop()
 { 
   RemoteClient = Server.available();              // Instatiate object for storing remote client info
   char data[21];                                  // make a char array to hold incoming data from the client
-  int i = 0;                                      // start index at 0
 
   if (RemoteClient) {                             // if you get a client,
+    int i = 0;                                    // start index at 0
     Serial.println("\nNew Client.");
     while (RemoteClient.connected()) {            //    loop while there is a data stream connection
       if (RemoteClient.available()) {             //    if there's bytes to read from the client,
         data[i] = RemoteClient.read();            //        save byte/char to data char array
         Serial.write(data[i]);                    //        print char out the serial monitor
-
+        i++;
         RemoteClient.write("packet recieved");    //        acknowledge to client that packet was received by ESP32
       }
     }
