@@ -1,5 +1,3 @@
-
-from EE4951W_Vehicle_Tracking_Project.Constants import *
 import cv2
 import pupil_apriltags as apriltag
 import numpy as np
@@ -8,6 +6,7 @@ import os
 from tkinter import *
 from tkinter import filedialog
 from bitstring import BitArray
+from Constants import *
 
 import imgui
 import glfw
@@ -15,7 +14,7 @@ import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 import time
 
-def tmpFunc():
+def globalSetup():
     global video_stream_title 
     video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
     global camera
@@ -311,7 +310,7 @@ def open_tags():
     print(len(detected_tags))
 
 #Start of Camera Code
-def main_camera():
+def main_camera(commBuf=None):
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
     global SHOW_TAG_IDENTIFICATION
@@ -319,8 +318,8 @@ def main_camera():
     global detected_tags
 
     #Setup functions
+    globalSetup()
     setup_camera()
-    tmpFunc()
     gui = setup_gui()
     imgui.create_context()
     imgui.get_io().fonts.get_tex_data_as_rgba32()

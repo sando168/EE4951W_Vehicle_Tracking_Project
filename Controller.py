@@ -7,8 +7,23 @@
 
 import socket
 import threading as th
-import Constants
+import cv2
+import pupil_apriltags as apriltag
+import numpy as np
+import json
+import os
+import imgui
+import glfw
+import OpenGL.GL as gl
+import time
+from tkinter import *
+from tkinter import filedialog
+from bitstring import BitArray
+from Constants import *
 from queue import Queue
+from imgui.integrations.glfw import GlfwRenderer
+from main_camera import *
+from vision_dummy import * # TODO: Remove this
 
 class Vehicle:
     """A class used to represent a vehicle"""
@@ -44,7 +59,7 @@ class Vehicle:
             The data to be sent to the vehicle
         """
 
-        self.sock.connect((self.adr, Constants.PORT))
+        self.sock.connect((self.adr, PORT))
         # IDK why but the data needs to be encoded, otherwise it doesn't
         # work
         self.sock.sendall(data.encode())
@@ -93,7 +108,7 @@ class Vehicle:
         """Sends the updated position of the vehicle to the vehicle."""
 
         # self.sendData("u {x} {y} {r}".format(self.x,self.y,self.r))
-        print("updateVehiclePosition() Sent!") #TODO: Remove this
+        # print("updateVehiclePosition() Sent!") #TODO: Remove this
     def getPosition(self):
         """Returns the position of the vehicle."""
         return(self.x,self.y,self.r)
@@ -140,7 +155,7 @@ def setup():
 
     #TODO: Make modular
     global v1 # Vehicle 1
-    v1 = Vehicle(Constants.V1ADDRESS)
+    v1 = Vehicle(ipAdress=V1ADDRESS)
     global tmp # Input storage variable
     tmp = ""
     global mTCBuf # Main to Controller Queue
@@ -163,6 +178,57 @@ def setup():
     controlThread = th.Thread(target=controller, args=(mTCBuf, cTMBuf, xBuf, yBuf, rBuf, visionBuf, v1,
                                                        mainToController, controllerToMain))
     controlThread.start()
+
+    global xComBuf # x coordinate communication buffer
+    xComBuf = Queue()
+    global yComBuf # y coordinate communication buffer
+    yComBuf = Queue()
+    global rComBuf # rotation communication buffer
+    rComBuf = Queue()
+    xComBuf.put(-1)
+    yComBuf.put(-1)
+    rComBuf.put(-1)
+    global dummyThread # Dummy Thread
+    dummyThread = th.Thread(target=dummy, args=(xComBuf, yComBuf, rComBuf))
+    dummyThread.start()
+    
+    global endBuf # End Condition for communication thread
+    endBuf = Queue()
+    global communicationThread # Communication Thread
+    communicationThread = th.Thread(target=communicate, args=(v1, xComBuf, yComBuf, rComBuf, endBuf))
+    communicationThread.start()
+
+def communicate(vehicle, xComBuf, yComBuf, rComBuf, endBuf):
+    """Line of communication between the vision system and the vehicle.
+    
+    Parameters
+    ----------
+    vehicle : Vehicle
+        The vehicle object to communicate with
+    xComBuf : Queue
+        The x coordinate communication buffer
+    yComBuf : Queue
+        The y coordinate communication buffer
+    rComBuf : Queue
+        The rotation communication buffer
+    endBuf : Queue
+        The end condition for the thread
+    """
+
+    oldTempx, oldTempy, oldTempr = -2, -2, -2 # Initialize old values
+
+    while endBuf.empty():
+        # Gets new values and updates the vehicle if they have changed
+        tempx = xComBuf.get() if not xComBuf.empty() else oldTempx
+        tempy = yComBuf.get() if not yComBuf.empty() else oldTempy
+        tempr = rComBuf.get() if not rComBuf.empty() else oldTempr
+
+        if tempx != oldTempx or tempy != oldTempy or tempr != oldTempr:
+            vehicle.updatePosition(tempx, tempy, tempr)
+            vehicle.updateVehiclePosition()
+            oldTempx = tempx
+            oldTempy = tempy
+            oldTempr = tempr
 
 def controller(mTCBuf, cTMBuf, xBuffer, yBuffer, rBuffer, visionBuffer, vehicle,
                mTCCond, cTMCond):
@@ -227,9 +293,11 @@ def main():
         # Waits for an input and stores it in tmp
         if tmp == "exit":
             mTCBuf.put(1)
+            endBuf.put(1)
             with mainToController:
                 mainToController.notify()
             controlThread.join()
+            communicationThread.join()
             print("Exiting peacefully, all threads closed")
             exit()
         elif tmp == "moveToPoint":
@@ -244,7 +312,8 @@ def main():
                 mainToController.notify()
             with controllerToMain:
                 controllerToMain.wait()
-            print("{vehicle_name}'s current position is {xy}.".format(v1.name, cTMBuf.get()))
+            print("{vehicle_name}'s current position is {xy}.".format(
+                vehicle_name=v1.name, xy=cTMBuf.get()))
         elif tmp == "updatePosition": # FOR TESTING ONLY #TODO: Remove this
             mTCBuf.put(4)
             xBuf.put(input("Enter x coordinate:"))
