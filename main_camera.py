@@ -1,4 +1,5 @@
 
+from EE4951W_Vehicle_Tracking_Project.Constants import *
 import cv2
 import pupil_apriltags as apriltag
 import numpy as np
@@ -14,21 +15,23 @@ import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 import time
 
-#Macros that remain constant
-GUI_WIDTH = 480
-GUI_HEIGHT = 480
-RESOLUTION_WIDTH = 1024
-RESOLUTION_HEIGHT = 768
-TAG_GRID_SIZE = 8
-AREA_WIDTH = 4      #4ft
-AREA_HEIGHT = 2.5   #2.5ft
-OUTLINE_TAGS = False
-OUTLINE_ANGLE = False
-SHOW_TAG_IDENTIFICATION = False
-LIST_TAGS = True
-video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
-camera = cv2.VideoCapture(0)                            #Open video camera
-tag_detector = apriltag.Detector()                      #Create tag detection object
+def tmpFunc():
+    global video_stream_title 
+    video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
+    global camera
+    camera = cv2.VideoCapture(0)                            #Open video camera
+    global tag_detector
+    tag_detector = apriltag.Detector()                      #Create tag detection object
+    #Dynamic array of detected tags including the tags outlining the boundaries of the play field
+    #The first three entries in the array are fixed in the order below
+    global world_coordinate
+    world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0, (0,0))
+    global top_bound
+    top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0, (0,0))
+    global right_bound
+    right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
+    global detected_tags
+    detected_tags = [world_coordinate, top_bound, right_bound]
 
 class ATag:
     descriptor = 'tag'
@@ -43,13 +46,6 @@ class ATag:
         self.position = pos
         self.angle = angle
         self.desired_pos = des
-
-#Dynamic array of detected tags including the tags outlining the boundaries of the play field
-#The first three entries in the array are fixed in the order below
-world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0, (0,0))
-top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0, (0,0))
-right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
-detected_tags = [world_coordinate, top_bound, right_bound]
 
 #Setup function for creating vehicle UI window
 def setup_gui():
@@ -324,6 +320,7 @@ def main_camera():
 
     #Setup functions
     setup_camera()
+    tmpFunc()
     gui = setup_gui()
     imgui.create_context()
     imgui.get_io().fonts.get_tex_data_as_rgba32()
