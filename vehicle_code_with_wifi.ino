@@ -157,7 +157,7 @@ void loop()
     while (RemoteClient.connected()) {            //    loop while there is a data stream connection
       if (RemoteClient.available()) {             //    if there's bytes to read from the client,
         data[i] = RemoteClient.read();            //        save byte/char to data char array
-        Serial.write(c);                          //        print char out the serial monitor
+        Serial.write(data[i]);                    //        print char out the serial monitor
 
         RemoteClient.write("packet recieved");    //        acknowledge to client that packet was received by ESP32
       }
