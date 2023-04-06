@@ -78,10 +78,11 @@ def setup_camera():
     #Error and stop program if not connected
     if not(camera.isOpened()):
         print('ERROR: Unable to connect to camera')
-        exit(1)
+        return False
     else:
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
+        return True
 
 #Setup function for determining the boundary tags within the frame
 #Can be called by user within the UI for resetting bounds
@@ -90,7 +91,13 @@ def auto_detect_boundaries():
     global detected_tags
 
     #Retrieve new frame from camera
-    ret, new_frame = camera.read()
+    ret = None
+    new_frame = None
+    if USE_CAMERA:
+        ret, new_frame = camera.read()
+    else:
+        new_frame = cv2.imread('coconut.png')
+        ret = True
 
     #Check if new_frame is correct
     if not(ret):
@@ -315,11 +322,12 @@ def main_camera(commBuf=None):
     global OUTLINE_ANGLE
     global SHOW_TAG_IDENTIFICATION
     global LIST_TAGS
+    global USE_CAMERA
     global detected_tags
 
     #Setup functions
     globalSetup()
-    setup_camera()
+    USE_CAMERA = setup_camera()
     gui = setup_gui()
     imgui.create_context()
     imgui.get_io().fonts.get_tex_data_as_rgba32()
@@ -333,7 +341,7 @@ def main_camera(commBuf=None):
     filename = 'Filename'
     set_pos = '0,0'
     #Start of while(1) loop that runs forever
-    while not(glfw.window_should_close(gui)) and camera.isOpened():
+    while not(glfw.window_should_close(gui)):
 
         #Begin UI window events
         glfw.poll_events()
@@ -416,7 +424,13 @@ def main_camera(commBuf=None):
         current_time = time.perf_counter() 
 
         #Retrieve new frame from camera
-        ret, new_frame = camera.read()
+        ret = None
+        new_frame = None
+        if USE_CAMERA:
+            ret, new_frame = camera.read()
+        else:
+            new_frame = cv2.imread('coconut.png')
+            ret = True
 
         #Check if new_frame is correct
         if not(ret):
