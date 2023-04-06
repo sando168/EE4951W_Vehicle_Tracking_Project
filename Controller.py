@@ -107,7 +107,7 @@ class Vehicle:
     def updateVehiclePosition(self):
         """Sends the updated position of the vehicle to the vehicle."""
 
-        # self.sendData("u {x} {y} {r}".format(self.x,self.y,self.r))
+        self.sendData("u {x} {y} {r}".format(x=self.x,y=self.y,r=self.r))
         # print("updateVehiclePosition() Sent!") #TODO: Remove this
     def getPosition(self):
         """Returns the position of the vehicle."""
@@ -190,12 +190,13 @@ def setup():
     xComBuf.put(-1)
     yComBuf.put(-1)
     rComBuf.put(-1)
-    global dummyThread # Dummy Thread
-    dummyThread = th.Thread(target=dummy, args=(xComBuf, yComBuf, rComBuf))
-    dummyThread.start()
-    
+
     global endBuf # End Condition for communication thread
     endBuf = Queue()
+    global dummyThread # Dummy Thread
+    dummyThread = th.Thread(target=dummy, args=(xComBuf, yComBuf, rComBuf, endBuf))
+    dummyThread.start()
+    
     global communicationThread # Communication Thread
     communicationThread = th.Thread(target=communicate, args=(v1, xComBuf, yComBuf, rComBuf, endBuf))
     communicationThread.start()
@@ -291,7 +292,8 @@ def main():
     setup()
     global tmp # Input storage variable, have to redeclare it here
     while 1:
-        tmp = input("\nValid commands are: exit, moveToPoint, getPosition\nEnter a command:")
+        tmp = input("\nValid commands are: exit, moveToPoint, getPosition, "+
+                    "updatePosition, moveDistance, rotate\nEnter a command:")
         # Waits for an input and stores it in tmp
         if tmp == "exit":
             mTCBuf.put(1)
@@ -300,6 +302,7 @@ def main():
                 mainToController.notify()
             controlThread.join()
             communicationThread.join()
+            dummyThread.join()
             print("Exiting peacefully, all threads closed")
             exit()
         elif tmp == "moveToPoint":

@@ -1,7 +1,7 @@
 from time import sleep
 
 
-def dummy(xBuf, yBuf, rBuf):
+def dummy(xBuf, yBuf, rBuf, endBuf):
 
     def updateXYR(x, y, r):
         # TODO: this only removes one element from the queue, not all
@@ -22,8 +22,8 @@ def dummy(xBuf, yBuf, rBuf):
             rBuf.get()
             rBuf.put(r)
 
-    print("x: {x}, y: {y}, r: {r} in dummy".format(x=xBuf.get(), y=yBuf.get(), 
-                                                   r=rBuf.get()))
     for i in range(10):
+        if(not endBuf.empty()):
+            break
         updateXYR(i, i+1, i+2)
         sleep(5)
