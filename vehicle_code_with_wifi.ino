@@ -11,18 +11,20 @@
 #define LOOP_COUNT 5
 #define error 200
 
-float destX; 
-float destY;  
-float currX; 
-float currY; 
-float currR; 
-float distance; 
-float angle; 
+float destX = -9999; 
+float destY = -9999;  
+float currX = -9999; 
+float currY = -9999; 
+float currR = -9999; 
+float distance = -9999; 
+float angle = -9999;
+ 
                  // "u 2.435 5.687 113.09" ---> updatePosistion(value1, value2, value3) 
 char command;    // first char of command determines what command it is (ex. 'u' correspond to updatePostion command)
 float value1;    // parsing will update these values  
 float value2; 
 float value3; 
+char data_str[21];    // make a char array to hold incoming data from the client
 
 /* ----- Global Variables for WiFi Functionality (Enterprise Network) ----- */
 
@@ -146,56 +148,95 @@ void moveVehicle(int currX, int currY, int destX, int destY)
   }
 }
 
+void printGlobalFloats(void){
+  
+  Serial.print("currX = ");
+  Serial.print(currX, 3);
+  Serial.print("\n");
+    
+  Serial.print("currY = ");
+  Serial.print(currY, 3);
+  Serial.print("\n");
+
+  Serial.print("currR = ");
+  Serial.print(currR, 3);
+  Serial.print("\n");
+    
+  Serial.print("destX = ");
+  Serial.print(destX, 3);
+  Serial.print("\n");
+    
+  Serial.print("destY = ");
+  Serial.print(destY, 3);
+  Serial.print("\n");
+    
+  Serial.print("distance = ");
+  Serial.print(distance, 3);
+  Serial.print("\n");
+    
+  Serial.print("angle = ");
+  Serial.print(angle, 3);
+  Serial.print("\n");
+}
+
 void loop()
 { 
   RemoteClient = Server.available();              // Instatiate object for storing remote client info
-  char data[21];                                  // make a char array to hold incoming data from the client
 
   if (RemoteClient) {                             // if you get a client,
-    int i = 0;                                    // start index at 0
     Serial.println("\nNew Client.");
+    String str = "";                              //    create temporary string
     while (RemoteClient.connected()) {            //    loop while there is a data stream connection
       if (RemoteClient.available()) {             //    if there's bytes to read from the client,
-        data[i] = RemoteClient.read();            //        save byte/char to data char array
-        Serial.write(data[i]);                    //        print char out the serial monitor
-        i++;
+        char c = RemoteClient.read();             //        save byte/char to data char array
+        Serial.write(c);                          //        print char out the serial monitor
+        str += c;                                 //        append char to string variable
         RemoteClient.write("packet recieved");    //        acknowledge to client that packet was received by ESP32
       }
     }
-  }
+    str.toCharArray(data_str, 21);
 
-  char* space1;
-  char* space2;
-  char* space3;
+    char* space1;
+    char* space2;
+    char* space3;
+    
+    command = data_str[0];                    // save char indicating type of command
+    space1 = strstr(data_str, " ");           // find the first space (delimiter)
   
-  command = data[0];                        // save char indicating type of command
-  space1 = strstr(data, " ");               // find the first space (delimiter)
-
-  value1 = strtof(space1, &space2);         // save the first float value
-  value2 = strtof(space2, &space3);         // save the second float value
-  value3 = strtof(space3, NULL);            // save the third float value
+    value1 = strtof(space1, &space2);         // save the first float value
+    value2 = strtof(space2, &space3);         // save the second float value
+    value3 = strtof(space3, NULL);            // save the third float value
+    
+    switch(command)   // depending on the command, save the corresponding values 
+    {
+      case 'u':
+        currX = value1; 
+        currY = value2; 
+        currR = value3;
+        break;
+      case 'd': 
+        destX = value1; 
+        destY = value2;
+        break;
+      case 'm':
+        distance = value1;
+        break;
+      case 'r': 
+        angle = value1;
+        break;
+    }
   
-  switch(command)   // depending on the command, save the corresponding values 
-  {
-    case 'u':
-      currX = value1; 
-      currY = value2; 
-      currR = value3;
-      break;
-    case 'd': 
-      destX = value1; 
-      destY = value2;
-      break;
-    case 'm':
-      distance = value1;
-      break;
-    case 'r': 
-      angle = value1;
-      break;
+    printGlobalFloats();
+    
+    RemoteClient.stop();
+    Serial.println("Client Disconnected.");
   }
-  moveVehicle(currX, currY, destX, destY); 
+  
+  //moveVehicle(currX, currY, destX, destY); 
+
+  motor(value1, value2);
+  
 }
-
 
 
 /*
