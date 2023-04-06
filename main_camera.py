@@ -552,5 +552,6 @@ def main_camera(commBuf=None):
     impl.shutdown()
     glfw.terminate()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main_camera()
+    glfw.terminate()
