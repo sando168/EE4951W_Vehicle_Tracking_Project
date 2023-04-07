@@ -1,3 +1,4 @@
+import socket
 import cv2
 import pupil_apriltags as apriltag
 import numpy as np
@@ -45,6 +46,63 @@ class ATag:
         self.position = pos
         self.angle = angle
         self.desired_pos = des
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    def sendData(self, data):
+        """Helper function to send data to the vehicle.
+
+        Parameters
+        ----------
+        data : str
+            The data to be sent to the vehicle
+        """
+
+        self.sock.connect((self.id, PORT))
+        # IDK why but the data needs to be encoded, otherwise it doesn't
+        # work
+        self.sock.sendall(data.encode())  
+    def recieveData(self):
+        """Recieves data from the vehicle.
+
+        Returns
+        -------
+        str
+            The data recieved from the vehicle
+        """
+
+        return self.sock.recv(1024)
+    def updateVehiclePosition(self):
+        """Sends the updated position of the vehicle to the vehicle."""
+
+        self.sendData("u {x} {y} {r}".format(x=self.position[0],y=self.position[1],r=self.angle))
+        # print("updateVehiclePosition() Sent!") #TODO: Remove this
+    def moveToPoint(self):
+        """Moves the vehicle to the specified point."""
+
+        # self.sendData("d {x} {y}".format(self.desired_pos[0],self.desired_pos[1]))
+        print("moveToPoint({},{}) Sent!".format(x,y)) #TODO: Remove this
+    def moveDistance(self, distance):
+        """Moves the vehicle a specified distance. FOR TESTING ONLY.
+        
+        Parameters
+        ----------
+        distance : int
+            The distance to move the vehicle
+        """
+
+        # self.sendData("m {}".format(distance))
+        print("moveDistance() Sent!")
+    def rotate(self, angle):
+        """Rotates the vehicle a specified angle. FOR TESTING ONLY.
+        
+        Parameters
+        ----------
+        angle : int
+            The angle to rotate the vehicle
+        """
+
+        # self.sendData("r {}".format(angle))
+        print("rotate() Sent!")
 
 #Setup function for creating vehicle UI window
 def setup_gui():
@@ -96,7 +154,7 @@ def auto_detect_boundaries():
     if USE_CAMERA:
         ret, new_frame = camera.read()
     else:
-        new_frame = cv2.imread('coconut.png')
+        new_frame = cv2.imread(PIC_TO_USE)
         ret = True
 
     #Check if new_frame is correct
@@ -196,7 +254,13 @@ def add_tag(ip_addr):
     global detected_tags
 
     #Retrieve new frame from camera
-    ret, new_frame = camera.read()
+    ret = None
+    new_frame = None
+    if USE_CAMERA:
+        ret, new_frame = camera.read()
+    else:
+        new_frame = cv2.imread(PIC_TO_USE)
+        ret = True
 
     #Check if new_frame is correct
     if not(ret):
@@ -405,20 +469,35 @@ def main_camera(commBuf=None):
                 #Retrieve and display desired position from input text box
                 has_changed = False
                 if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
-                    has_changed, set_pos = imgui.input_text('##'+str(added_tag.id), 'Desired Pos', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+                    has_changed, set_pos = imgui.input_text('##target'+str(added_tag.id), 'Desired Pos x,y', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
                 if has_changed:
-                    coords = tuple(map(float, set_pos.split(',')))
-                    #Check for valid input
-                    if len(coords) == 2:
-                        #Check if input is in play area bounds
-                        if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
-                            added_tag.desired_pos = coords
-                        else:
-                            print('ERROR: Unable to set position. Not within pleay area bounds.')
-                    else:
+                    try:
+                        coords = tuple(map(float, set_pos.split(',')))
+                        #Check for valid input
+                        if len(coords) == 2:
+                            #Check if input is in play area bounds
+                            if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
+                                added_tag.desired_pos = coords
+                            else:
+                                print('ERROR: Unable to set position. Not within pleay area bounds.')
+                    except:
                         print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma.')
                 if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
                     imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
+                
+                has_changed=False
+                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+                    has_changed, go_dist = imgui.input_text('##distance'+str(added_tag.id), 'TESTING Go Distance', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+                    if has_changed:
+                        try:
+                            dist = float(go_dist)
+                            #Check for valid input
+                            if dist > 0:
+                                added_tag.go_dist = dist
+                            else:
+                                print('ERROR: Unable to set go distance. Not a positive number.')
+                        except:
+                            print('ERROR: Unable to set go distance. Input should be a positive number.')
 
         #Update timers for FPS
         current_time = time.perf_counter() 
@@ -429,7 +508,7 @@ def main_camera(commBuf=None):
         if USE_CAMERA:
             ret, new_frame = camera.read()
         else:
-            new_frame = cv2.imread('coconut.png')
+            new_frame = cv2.imread(PIC_TO_USE)
             ret = True
 
         #Check if new_frame is correct
@@ -518,6 +597,7 @@ def main_camera(commBuf=None):
                 if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
                     added_tag.angle = angle
                     added_tag.position = center
+                    added_tag.updateVehiclePosition()
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:

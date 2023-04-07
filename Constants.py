@@ -22,3 +22,4 @@ OUTLINE_ANGLE = False
 SHOW_TAG_IDENTIFICATION = False
 LIST_TAGS = True
 USE_CAMERA = True
+PIC_TO_USE = "apriltag_test-1.png"
