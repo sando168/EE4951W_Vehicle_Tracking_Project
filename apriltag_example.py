@@ -27,7 +27,7 @@ def main():
 
     options = parser.parse_args()
 
-    img = cv2.imread('apriltag_photo.png', cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('apriltag_test.png', cv2.IMREAD_GRAYSCALE)
 
     window = 'April Tag Example'
     cv2.namedWindow(window)
