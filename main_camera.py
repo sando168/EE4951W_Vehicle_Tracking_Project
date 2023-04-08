@@ -46,7 +46,10 @@ class ATag:
         self.position = pos
         self.angle = angle
         self.desired_pos = des
+        self.desired_distance = 0.0
+        self.desired_angle = 0.0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connected = False
     
     def sendData(self, data):
         """Helper function to send data to the vehicle.
@@ -56,11 +59,33 @@ class ATag:
         data : str
             The data to be sent to the vehicle
         """
+        if not self.connected:
+            self.sock.connect((self.descriptor, PYPORT))
+            self.connected = True
+            print("Connected to {}".format(self.descriptor))
+        # IDK why but the data needs to be encoded, otherwise it doesn't work
+        # The current implementation of this function is leaving the connection
+        # open the entire time. The alternative is to open and close the connection
+        # using line 50 every time sendData() is called.
+        self.sock.sendall(data.encode())
+    def sendDataClose(self, data):
+        """Helper function to send data to the vehicle.
 
-        self.sock.connect((self.id, PORT))
-        # IDK why but the data needs to be encoded, otherwise it doesn't
-        # work
-        self.sock.sendall(data.encode())  
+        Parameters
+        ----------
+        data : str
+            The data to be sent to the vehicle
+        """
+        if not self.connected:
+            self.sock.connect((self.descriptor, PYPORT))
+            self.sock.sendall(data.encode())
+            self.connected = True
+            self.sock.close()
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.descriptor, PYPORT))
+            self.sock.sendall(data.encode())
+            self.sock.close()
     def recieveData(self):
         """Recieves data from the vehicle.
 
@@ -74,34 +99,22 @@ class ATag:
     def updateVehiclePosition(self):
         """Sends the updated position of the vehicle to the vehicle."""
 
-        self.sendData("u {x} {y} {r}".format(x=self.position[0],y=self.position[1],r=self.angle))
+        self.sendDataClose("u {x} {y} {r}".format(x=self.position[0],y=self.position[1],r=self.angle))
         # print("updateVehiclePosition() Sent!") #TODO: Remove this
     def moveToPoint(self):
         """Moves the vehicle to the specified point."""
 
-        # self.sendData("d {x} {y}".format(self.desired_pos[0],self.desired_pos[1]))
-        print("moveToPoint({},{}) Sent!".format(x,y)) #TODO: Remove this
-    def moveDistance(self, distance):
-        """Moves the vehicle a specified distance. FOR TESTING ONLY.
-        
-        Parameters
-        ----------
-        distance : int
-            The distance to move the vehicle
-        """
+        self.sendDataClose("d {x} {y}".format(self.desired_pos[0],self.desired_pos[1]))
+        print("moveToPoint({},{}) Sent!".format(self.desired_pos[0], self.desired_pos[1])) #TODO: Remove this
+    def moveDistance(self):
+        """Moves the vehicle a specified distance. FOR TESTING ONLY."""
 
-        # self.sendData("m {}".format(distance))
+        self.sendDataClose("m {}".format(self.desired_distance))
         print("moveDistance() Sent!")
-    def rotate(self, angle):
-        """Rotates the vehicle a specified angle. FOR TESTING ONLY.
-        
-        Parameters
-        ----------
-        angle : int
-            The angle to rotate the vehicle
-        """
+    def rotate(self):
+        """Rotates the vehicle a specified angle. FOR TESTING ONLY."""
 
-        # self.sendData("r {}".format(angle))
+        self.sendDataClose("r {}".format(self.desired_angle))
         print("rotate() Sent!")
 
 #Setup function for creating vehicle UI window
@@ -466,6 +479,10 @@ def main_camera(commBuf=None):
                 imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
                 imgui.text("Angle: " + "{:.2f}".format(added_tag.angle))
 
+                #Display desired position on UI
+                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+                    imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
+
                 #Retrieve and display desired position from input text box
                 has_changed = False
                 if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
@@ -478,13 +495,14 @@ def main_camera(commBuf=None):
                             #Check if input is in play area bounds
                             if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
                                 added_tag.desired_pos = coords
+                                added_tag.moveToPoint()
                             else:
                                 print('ERROR: Unable to set position. Not within pleay area bounds.')
                     except:
-                        print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma.')
-                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
-                    imgui.text("Target: (" + "{:.2f}".format(added_tag.desired_pos[0]) + ", " + "{:.2f}".format(added_tag.desired_pos[1]) + ")")
+                        print('ERROR: Unable to set position. Input should be 2 numbers separated by a comma. Input: ' + set_pos)
                 
+                
+                # Retrieve and display distance to go from input text box TESTING ONLY
                 has_changed=False
                 if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
                     has_changed, go_dist = imgui.input_text('##distance'+str(added_tag.id), 'TESTING Go Distance', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
@@ -493,11 +511,28 @@ def main_camera(commBuf=None):
                             dist = float(go_dist)
                             #Check for valid input
                             if dist > 0:
-                                added_tag.go_dist = dist
+                                added_tag.desired_distance = dist
+                                added_tag.moveDistance()
                             else:
                                 print('ERROR: Unable to set go distance. Not a positive number.')
                         except:
                             print('ERROR: Unable to set go distance. Input should be a positive number.')
+            
+                # Retrieve and display an angle to rotate to from input text box TESTING ONLY
+                has_changed=False
+                if  added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+                    has_changed, go_angle = imgui.input_text('##angle'+str(added_tag.id), 'TESTING Go Angle', 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+                    if has_changed:
+                        try:
+                            angle = float(go_angle)
+                            #Check for valid input
+                            if dist > 0 and dist < 360:
+                                added_tag.desired_angle = angle
+                                added_tag.rotate()
+                            else:
+                                print('ERROR: Unable to set go angle. Not a positive number.')
+                        except:
+                            print('ERROR: Unable to set go angle. Input should be a positive number.')
 
         #Update timers for FPS
         current_time = time.perf_counter() 
@@ -595,9 +630,10 @@ def main_camera(commBuf=None):
             #Update list of added tags
             for added_tag in detected_tags:
                 if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
-                    added_tag.angle = angle
-                    added_tag.position = center
-                    added_tag.updateVehiclePosition()
+                    if(added_tag.angle != angle or added_tag.position != center):
+                        added_tag.angle = angle
+                        added_tag.position = center
+                        added_tag.updateVehiclePosition()
 
             #Draw the arbitrary contour from corners since the tag could be rotated
             if OUTLINE_TAGS:
