@@ -1,0 +1,37 @@
+{ "tags": [{
+    "name": "world_coordinate",
+    "id": "0x000a043a522c0200",
+    "position": [
+        880,
+        702
+    ],
+    "angle": -0.9391909457355799,
+    "desired pos": [
+        0,
+        0
+    ]
+}, {
+    "name": "top_bound",
+    "id": "0x00082c50303a6a00",
+    "position": [
+        890,
+        113
+    ],
+    "angle": 3.878524502847706,
+    "desired pos": [
+        0,
+        0
+    ]
+}, {
+    "name": "right_bound",
+    "id": "0x0034142612742000",
+    "position": [
+        1727,
+        705
+    ],
+    "angle": 0.8550973962667232,
+    "desired pos": [
+        0,
+        0
+    ]
+}]}
