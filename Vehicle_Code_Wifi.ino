@@ -163,34 +163,6 @@ void motor(int left, int right)
   }
 }
 
-void moveVehicle(int currX, int currY, int destX, int destY)
-{
-  if ((destX - currX) > error && (destY - currY) > error)     //destination is on the right of the starting position 
-  {
-    motor(150, 70); 
-    delay(200); 
-  }
-  else if ((currX - destX) > error && (destY - currY) > error)    //destination is on the left of the starting position 
-  {
-    motor(70, 150); 
-    delay(200); 
-  }
-  /*else if (abs(destX - currX) < error && (destY - currY) > error)     //go straight if face the correct direction and x coordinate is the same
-  {
-    motor(100, 100); 
-    delay(200); 
-  }*/
-  else if (abs(destX - currX) > error && abs(destY - currY) < error)     //go straight if face the correct direction and y coordinate is the same
-  {
-    motor(100, 100); 
-    delay(200); 
-  }
-  else if (abs(destX - currX) < error && abs(destY - currY) < error)  //arrived at the destination 
-  {
-    motor(0,0);   //stop 
-  }
-}
-
 void printGlobalFloats(void){
   
   Serial.print("currX = ");
