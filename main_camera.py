@@ -707,6 +707,7 @@ def main_camera(commBuf=None):
         #Process tags in camera frame within a non-blocking thread
         tag_processing_thread = threading.Thread(target=process_tags, args=(tags,new_frame_gray))
         tag_processing_thread.start()
+        tag_processing_thread.join()
 
         #Display video stream
         cv2.imshow(video_stream_title, new_frame_gray)
