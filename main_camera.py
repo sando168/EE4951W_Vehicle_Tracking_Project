@@ -19,7 +19,7 @@ def globalSetup():
     global video_stream_title 
     video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
     global camera
-    camera = cv2.VideoCapture(0)                            #Open video camera
+    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)                          #Open video camera
     global tag_detector
     tag_detector = apriltag.Detector()                      #Create tag detection object
     #Dynamic array of detected tags including the tags outlining the boundaries of the play field
@@ -60,7 +60,7 @@ class ATag:
             The data to be sent to the vehicle
         """
         if not self.connected:
-            self.sock.connect((self.descriptor, PYPORT))
+            self.sock.connect((self.descriptor, PORT))
             self.connected = True
             print("Connected to {}".format(self.descriptor))
         # IDK why but the data needs to be encoded, otherwise it doesn't work
@@ -77,13 +77,13 @@ class ATag:
             The data to be sent to the vehicle
         """
         if not self.connected:
-            self.sock.connect((self.descriptor, PYPORT))
+            self.sock.connect((self.descriptor, PORT))
             self.sock.sendall(data.encode())
             self.connected = True
             self.sock.close()
         else:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((self.descriptor, PYPORT))
+            self.sock.connect((self.descriptor, PORT))
             self.sock.sendall(data.encode())
             self.sock.close()
     def recieveData(self):
@@ -99,22 +99,22 @@ class ATag:
     def updateVehiclePosition(self):
         """Sends the updated position of the vehicle to the vehicle."""
 
-        self.sendDataClose("u {x} {y} {r}".format(x=self.position[0],y=self.position[1],r=self.angle))
+        self.sendData("u {x} {y} {r}".format(x=self.position[0],y=self.position[1],r=self.angle))
         # print("updateVehiclePosition() Sent!") #TODO: Remove this
     def moveToPoint(self):
         """Moves the vehicle to the specified point."""
 
-        self.sendDataClose("d {x} {y}".format(self.desired_pos[0],self.desired_pos[1]))
+        self.sendData("d {x} {y}".format(self.desired_pos[0],self.desired_pos[1]))
         print("moveToPoint({},{}) Sent!".format(self.desired_pos[0], self.desired_pos[1])) #TODO: Remove this
     def moveDistance(self):
         """Moves the vehicle a specified distance. FOR TESTING ONLY."""
 
-        self.sendDataClose("m {}".format(self.desired_distance))
+        self.sendData("m {}".format(self.desired_distance))
         print("moveDistance() Sent!")
     def rotate(self):
         """Rotates the vehicle a specified angle. FOR TESTING ONLY."""
 
-        self.sendDataClose("r {}".format(self.desired_angle))
+        self.sendData("r {}".format(self.desired_angle))
         print("rotate() Sent!")
 
 #Setup function for creating vehicle UI window
@@ -153,6 +153,10 @@ def setup_camera():
     else:
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
+        camera.set(cv2.CAP_PROP_FPS, FRAMERATE)
+        # camera.set(cv2.CAP_PROP_FRAME_WIDTH, WEBCAM_RAW_RES[0])
+        # camera.set(cv2.CAP_PROP_FRAME_HEIGHT, WEBCAM_RAW_RES[1])
+        camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # add this line
         return True
 
 #Setup function for determining the boundary tags within the frame

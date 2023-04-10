@@ -14,8 +14,9 @@ PORT = 23 # The port to connect to
 # The following constants are used in main_camera.py
 GUI_WIDTH = 480
 GUI_HEIGHT = 480
-RESOLUTION_WIDTH = 1024
+RESOLUTION_WIDTH = 1920
 RESOLUTION_HEIGHT = 768
+FRAMERATE = 30
 TAG_GRID_SIZE = 8
 AREA_WIDTH = 4      #4ft
 AREA_HEIGHT = 2.5   #2.5ft
