@@ -1,18 +1,15 @@
-/**
- * DNS Client
- * CSci 4211 - Spring 2023
+/*
+ * ClientCode.java
+ * This java code creates a simple Client for testing the ESP32 Wifi communication
+ * 
+ * By: Rigo Sandoval
  */
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
-/*
- * Class DNSClient is one of three distributed programs. The client sends DNS
- * inquiries to the server. The server does a lookup of the information and
- * returns it.
- */
-
-public class DNSClient{
+public class ClientCode{
     public static void main(String[]args)
             throws UnknownHostException, IOException{
 	//Change the host String to recognize the address where the server
@@ -22,21 +19,18 @@ public class DNSClient{
 	
 	while(true){
         Scanner inLine = new Scanner(System.in);
-        String query = "";
+        String message = "";
 
-        //Request DNS query from user
-        System.out.println("Type in a domain name to query, or 'q' to quit:");
+        System.out.println("Type in a message for the server, or 'q' to quit:");
+        //send message to the server.
+        message = inLine.nextLine();
 
-        //send DNS query to the server. Change the URL to whatever you want to
-        //query (ex. google.com, microsoft.com, umn.edu)
-        query = inLine.nextLine();
-
-        if (query.equalsIgnoreCase("q") || query.equalsIgnoreCase("quit")) {
+        if (message.equalsIgnoreCase("q") || message.equalsIgnoreCase("quit")) {
             System.exit(0);
         }
         else{
 	    	int port = 23;
-    		String host = "10.130.96.92";   // IP address of ESP32
+    		String host = "10.185.61.122";   // IP address of ESP32
             
     		//Create new client socket and connect to the server.
 	    	Socket cSock = new Socket(host, port);
@@ -47,17 +41,17 @@ public class DNSClient{
 	    	BufferedReader readIn = new BufferedReader(
 	    	new InputStreamReader(cSock.getInputStream()));
             
-            //Send query to the server
-            sendOut.println(query);
+            //Send message to the server
+            sendOut.println(message);
             //Read in the returned information
             String data = readIn.readLine();
 
             //close all open Objects
-            //print query information.
+            //print message information.
 		    sendOut.close();
             readIn.close();
             cSock.close();
-            System.out.println("Received: '" + data + "'\n");
+            System.out.println("Received: '" + data);
         }
             
     }
