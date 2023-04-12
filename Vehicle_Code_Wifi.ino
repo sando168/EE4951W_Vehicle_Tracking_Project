@@ -35,14 +35,14 @@ const char* ssid     = "XR";              // wifi network ssid (name)
 const char* password = "quandang";        // wifi network password
 */
 /* ----- Global Variables for WiFi Functionality (Enterprise Network) ----- */
-
+///*
 #include <WiFi.h>
 #include "esp_wpa2.h"                     // wpa2 library for connections to Enterprise networks
 #define EAP_IDENTITY "sando168@umn.edu"   // login identity for Enterprise network
 #define EAP_USERNAME "sando168@umn.edu"   // oftentimes just a repeat of the identity
 #define EAP_PASSWORD "NskypeCOffee44Qn"   // login password
 const char* ssid = "eduroam";             // Enterprise network SSID
-
+//*/
 /* ----- Objects for setting ESP32 as server ----- */
 /*
 const uint ServerPort = 23;
@@ -51,7 +51,7 @@ WiFiClient Client;                        // instantiate WiFiClient to store cli
 */
 /* ----- Objects for setting ESP32 as a client ----- */
 
-IPAddress server(10,130,57,34);         // server computer IP address
+IPAddress server(10,130,94,128);           // server computer IP address
 const int port = 23;                      // port that ESP32 client will operate on (23 = Telnet)
 WiFiClient Client;                        // object for setting up ESP32 as a client
 
@@ -84,17 +84,17 @@ void setup()
   WiFi.begin(ssid, password);
   */
   /* ----- Code to connect ESP32 to Enterprise Network ----- */
-  
+  ///*
   //WiFi.mode(WIFI_AP);                     // access point mode: stations can connect to the ESP32
   // connect to eduroam with login info
   WiFi.begin(ssid, WPA2_AUTH_PEAP, EAP_IDENTITY, EAP_USERNAME, EAP_PASSWORD);
-  
+  //*/
 
   // waiting for sucessful connection to wifi network
   int counter = 0;
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
-    delay(50);
+    delay(500);
     counter++;
     if(counter>=60){ //after 30 seconds timeout - reset board
       ESP.restart();
@@ -108,12 +108,13 @@ void setup()
   Serial.println(WiFi.localIP()); //print LAN IP
 
   /* ----- Code to set up ESP32 as a client ----- */
+  /*
   Serial.print("Connecting to server: ");
   Serial.println(server);
   
   counter = 0;
   while (!Client.connect(server, port)) {
-    delay(50);
+    delay(500);
     Serial.print(".");
     counter++;
     if(counter>=60){ //after 30 seconds timeout - reset board
@@ -121,8 +122,9 @@ void setup()
     }
   }
   Serial.println("");
-  Serial.println("Server connected");
-
+  Serial.println("Server connection working, closing client");
+  Client.stop();
+  */
   /* ----- Code to set up ESP32 as a server ----- */
   //Server.begin();
 
@@ -199,58 +201,66 @@ void loop()
   ESP32asClient();
 }
 
+
 void ESP32asClient()
 {
   String str = "";
+  
+  if (Client.connect(server, port)){             // if ESP32 can connect to server
+    Client.println("www.google.com");            //    send a request to Server
 
-  while(Client.available()) {
-    Serial.println("\nClient receiving data");
-    char c = Client.read();                   //        save byte/char to data char array
-    Serial.write(c);                          //        print char out the serial monitor
-    str += c;                                 //        append char to string variable
-    Client.write("packet recieved");          //        acknowledge to client that packet was received by ESP32
+    while (Client.connected()) {                 //    loop while there is a data stream connection
+      while (Client.available()) {                  //    if there's bytes to read from the client,
+        char c = Client.read();                  //        save byte/char to data char array
+        Serial.write(c);                         //        print char out the serial monitor
+        str += c;                                //        append char to string variable
+        //Client.println("packet recieved");          //        acknowledge to client that packet was received by ESP32
+      }
+    }
+    
+    str.toCharArray(data_str, 21);
+  
+    char* space1;
+    char* space2;
+    char* space3;
+      
+    command = data_str[0];                    // save char indicating type of command
+    space1 = strstr(data_str, " ");           // find the first space (delimiter)
+    
+    value1 = strtof(space1, &space2);         // save the first float value
+    value2 = strtof(space2, &space3);         // save the second float value
+    value3 = strtof(space3, NULL);            // save the third float value
+      
+    switch(command)   // depending on the command, save the corresponding values 
+    {
+      case 'u':
+        currX = value1; 
+        currY = value2; 
+        currR = value3;
+        break;
+      case 'd': 
+        destX = value1; 
+        destY = value2;
+        break;
+      case 'm':
+        distance = value1;
+        break;
+      case 'r': 
+        angle = value1;
+        break;
+    }
+    
+    printGlobalFloats();
+    
+    Serial.println("closing connection");
+    Client.stop();
+  } else {
+    Serial.println("Couldn't connect to server. Retrying...");
+    return;  
   }
-
-  str.toCharArray(data_str, 21);
-
-  char* space1;
-  char* space2;
-  char* space3;
-    
-  command = data_str[0];                    // save char indicating type of command
-  space1 = strstr(data_str, " ");           // find the first space (delimiter)
-  
-  value1 = strtof(space1, &space2);         // save the first float value
-  value2 = strtof(space2, &space3);         // save the second float value
-  value3 = strtof(space3, NULL);            // save the third float value
-    
-  switch(command)   // depending on the command, save the corresponding values 
-  {
-    case 'u':
-      currX = value1; 
-      currY = value2; 
-      currR = value3;
-      break;
-    case 'd': 
-      destX = value1; 
-      destY = value2;
-      break;
-    case 'm':
-      distance = value1;
-      break;
-    case 'r': 
-      angle = value1;
-      break;
-  }
-  
-  printGlobalFloats();
-    
-  Serial.println();
-  Serial.println("closing connection");
-  
   //moveVehicle(currX, currY, destX, destY); 
-
   motor(value1, value2);
+  delay(500);
 }
 /*
 void ESP32asServer()
