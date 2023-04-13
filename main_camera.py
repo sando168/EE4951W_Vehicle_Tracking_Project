@@ -311,8 +311,6 @@ def setup_camera():
         camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
         camera.set(cv2.CAP_PROP_FPS, FRAMERATE)
-        # camera.set(cv2.CAP_PROP_FRAME_WIDTH, WEBCAM_RAW_RES[0])
-        # camera.set(cv2.CAP_PROP_FRAME_HEIGHT, WEBCAM_RAW_RES[1])
         camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # add this line
         return True
 
