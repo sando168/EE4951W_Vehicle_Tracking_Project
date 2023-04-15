@@ -19,7 +19,7 @@ RESOLUTION_HEIGHT = 768
 FRAMERATE = 30
 TAG_GRID_SIZE = 8
 AREA_WIDTH = 4      #4ft
-AREA_HEIGHT = 2.5   #2.5ft
+AREA_HEIGHT = 2.0   #2.0ft
 OUTLINE_TAGS = False
 OUTLINE_ANGLE = False
 SHOW_TAG_IDENTIFICATION = False
@@ -28,3 +28,5 @@ USE_CAMERA = True
 PIC_TO_USE = "apriltag_test.png"
 
 DETECT_BOUNDARIES = False
+ADD_TAG_FUNC = False
+added_tag_ip = ""

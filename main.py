@@ -70,6 +70,7 @@ class ATag:
             self.sock.connect((self.descriptor, PORT))
             self.connected = True
             print("Connected to {}".format(self.descriptor))
+
         # IDK why but the data needs to be encoded, otherwise it doesn't work
         # The current implementation of this function is leaving the connection
         # open the entire time. The alternative is to open and close the connection
@@ -159,6 +160,8 @@ def run_gui():
     global LIST_TAGS
     global USE_CAMERA
     global DETECT_BOUNDARIES
+    global ADD_TAG_FUNC
+    global added_tag_ip
     global detected_tags
     global previous_time
     global current_time
@@ -193,7 +196,8 @@ def run_gui():
         has_changed, ip_addr = imgui.input_text('##ip', ip_addr, 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
         imgui.same_line()
         if imgui.button('Capture'):
-            add_tag(ip_addr)
+            ADD_TAG_FUNC = True
+            added_tag_ip = ip_addr
 
         #Save list and open list of tags UI
         has_changed, filename = imgui.input_text('##file', filename, 50, imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
@@ -305,7 +309,8 @@ def run_gui():
 def run_server():
 
     #Get IP address of machine
-    HOST = socket.gethostbyname(socket.gethostname())  # The server's hostname or IP address
+    #HOST = socket.gethostbyname(socket.gethostname())  # The server's hostname or IP address
+    HOST = "10.131.111.155"
 
     #Open, bind, and start listenting for vehicles on socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -327,10 +332,15 @@ def run_server():
         for tag in detected_tags:
 
             #Found vehicles
-            if tag.descriptor == address:
+            if tag.descriptor == address[0]:
+
+                tag.connected = True
 
                 #Send information
-                tag.updateVehiclePosition()
+                data = "u {x:.3f} {y:.3f} {r:.3f}".format(x=tag.position[0],y=tag.position[1],r=tag.angle)
+                connection.send(data.encode())
+        
+        connection.close()
 
 #Setup function before streaming video
 def setup_camera():
@@ -540,10 +550,9 @@ def auto_detect_boundaries():
                 detected_tags[1].angle = angle
 
             #World Coordinate
-            else:
-                detected_tags[0].id = id
-                detected_tags[0].position = center
-                detected_tags[0].angle = angle
+            detected_tags[0].id = id
+            detected_tags[0].position = center
+            detected_tags[0].angle = angle
 
         #Right Boundary
         elif center[0] > detected_tags[2].position[0]:
@@ -693,6 +702,8 @@ def main_camera(commBuf=None):
     global LIST_TAGS
     global USE_CAMERA
     global DETECT_BOUNDARIES
+    global ADD_TAG_FUNC
+    global added_tag_ip
     global detected_tags
     global previous_time
     global current_time
@@ -726,6 +737,9 @@ def main_camera(commBuf=None):
         if DETECT_BOUNDARIES:
             auto_detect_boundaries()
             DETECT_BOUNDARIES = False
+        if ADD_TAG_FUNC:
+            add_tag(added_tag_ip)
+            ADD_TAG_FUNC = False
         
         #Convert new frame to gray scale
         new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
