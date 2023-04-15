@@ -8,8 +8,8 @@
 HOST = "192.168.0.1" # The ip address of the host, possibly unnecessary
 V1ADDRESS = "10.131.105.157" # The ip address of vehicle 1
 PYADDRESS = "10.0.0.72"
-PYPORT = 80
-PORT = 23 # The port to connect to
+PYPORT = 80 # Dev Port
+PORT = 65432 # Production Port
 
 # The following constants are used in main_camera.py
 GUI_WIDTH = 480

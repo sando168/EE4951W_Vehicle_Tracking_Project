@@ -22,8 +22,8 @@ from bitstring import BitArray
 from Constants import *
 from queue import Queue
 from imgui.integrations.glfw import GlfwRenderer
-from main_camera import *
-from vision_dummy import * # TODO: Remove this
+from main import *
+from Examples.vision_dummy import * # TODO: Remove this
 
 class Vehicle:
     """A class used to represent a vehicle"""

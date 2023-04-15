@@ -9,6 +9,7 @@ from tkinter import filedialog
 from bitstring import BitArray
 from Constants import *
 import threading
+import signal
 
 import imgui
 import glfw
@@ -300,6 +301,37 @@ def run_gui():
     impl.shutdown()
     glfw.terminate()
 
+#Run server in a separate thread
+def run_server():
+
+    #Get IP address of machine
+    HOST = socket.gethostbyname(socket.gethostname())  # The server's hostname or IP address
+
+    #Open, bind, and start listenting for vehicles on socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((HOST, PORT))
+    sock.listen()
+
+    print("....................Started Server: " + HOST + "....................")
+
+    while True:
+
+        #Accept vehicle connection
+        connection, address = sock.accept()
+        print("Connected to: ", address)
+
+        #Place incoming data in to buffer
+        buf = connection.recv(1024)
+
+        #Find the device that connected, and send information
+        for tag in detected_tags:
+
+            #Found vehicles
+            if tag.descriptor == address:
+
+                #Send information
+                tag.updateVehiclePosition()
+
 #Setup function before streaming video
 def setup_camera():
 
@@ -344,9 +376,7 @@ def process_tags(tags, new_frame):
                                         [RESOLUTION_WIDTH-1, 1]])
         corners_h = np.float32(corners)
         tag_homography = cv2.getPerspectiveTransform(corners_h, target_corners)
-        # cropped_tag = outlined_tags
         cropped_tag = cv2.warpPerspective(new_frame, tag_homography, (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), flags=cv2.INTER_LINEAR)
-        # cropped_tag_gray = cv2.cvtColor(cropped_tag, cv2.COLOR_BGR2GRAY)
 
         #2. Iterate across squares on tag grid sampling from top left to bottom right
         #Iterate across rows of pixels
@@ -392,7 +422,6 @@ def process_tags(tags, new_frame):
                 if(added_tag.angle != angle or added_tag.position != center):
                     added_tag.angle = angle
                     added_tag.position = center
-                    added_tag.updateVehiclePosition()
 
         #Draw the arbitrary contour from corners since the tag could be rotated
         if OUTLINE_TAGS:
@@ -673,6 +702,8 @@ def main_camera(commBuf=None):
     USE_CAMERA = setup_camera()
     gui_thread = threading.Thread(target=run_gui, args=())
     gui_thread.start()
+    server_thread = threading.Thread(target=run_server, args=())
+    server_thread.start()
     auto_detect_boundaries()
 
     #Start of while(1) loop that runs forever
