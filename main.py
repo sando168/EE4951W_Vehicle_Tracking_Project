@@ -106,6 +106,7 @@ class ThreadedCamera:
 
     ret = None
     frame = None
+    tags = None
     global USE_CAMERA
 
     def __init__(self):
@@ -153,12 +154,12 @@ class ThreadedCamera:
 def globalSetup():
     global video_stream_title 
     video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
-    global tag_detector
-    tag_detector = apriltag.Detector(nthreads=8, quad_decimate=2.0)            #Create tag detection object
     global current_time
     current_time = 1.0
     global previous_time
     previous_time = 1.0
+    global tag_detector
+    tag_detector = apriltag.Detector(nthreads=4, quad_decimate=3.0)
 
     #Dynamic array of detected tags including the tags outlining the boundaries of the play field
     #The first three entries in the array are fixed in the order below
@@ -170,6 +171,8 @@ def globalSetup():
     right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
     global detected_tags
     detected_tags = [world_coordinate, top_bound, right_bound]
+    global tag_id_lookup
+    tag_id_lookup = [str(detected_tags[0].id), str(detected_tags[1].id), str(detected_tags[2].id)]
 
 #Setup function for creating vehicle UI window
 def setup_gui():
@@ -361,14 +364,18 @@ def run_server():
 
     print("....................Started Server: " + HOST + "....................")
 
+    #Accept vehicle connection
+    connection, address = sock.accept()
+    print("Connected to: ", address)
+
     while True:
 
-        #Accept vehicle connection
-        connection, address = sock.accept()
-        print("Connected to: ", address)
-
         #Place incoming data in to buffer
-        buf = connection.recv(1024)
+        try:
+            buf = connection.recv(1024)
+        except:
+            connection, address = sock.accept()
+            print("Connected to: ", address)
 
         #Find the device that connected, and send information
         for tag in detected_tags:
@@ -379,10 +386,10 @@ def run_server():
                 tag.connected = True
 
                 #Send information
-                data = "u {x:.3f} {y:.3f} {r:.3f}".format(x=tag.position[0],y=tag.position[1],r=tag.angle)
+                data = "u {x:.3f} {y:.3f} {r:.3f} \n".format(x=tag.position[0],y=tag.position[1],r=tag.angle)
                 connection.send(data.encode())
         
-        connection.close()   
+        #connection.close()
 
 #Iterate over AprilTags in camera frame
 def process_tags(tags, new_frame):
@@ -453,13 +460,18 @@ def process_tags(tags, new_frame):
         x_dimension_per_pixel = AREA_WIDTH / (detected_tags[2].position[0] - origin[0] + 0.000001)
         y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
         center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
+        
+        try:
+            index = tag_id_lookup.index(str(id))
+        except:
+            continue
+        added_tag = detected_tags[index]
 
         #Update list of added tags
-        for added_tag in detected_tags:
-            if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
-                if(added_tag.angle != angle or added_tag.position != center):
-                    added_tag.angle = angle
-                    added_tag.position = center
+        if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
+            if(added_tag.angle != angle or added_tag.position != center):
+                added_tag.angle = angle
+                added_tag.position = center
 
         #Draw the arbitrary contour from corners since the tag could be rotated
         if OUTLINE_TAGS:
@@ -505,10 +517,10 @@ def auto_detect_boundaries(camera):
         exit(1)
 
     #Convert new frame to gray scale
-    new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
+    new_frame = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
 
     #Detect AprilTags
-    tags = tag_detector.detect(new_frame_gray)
+    tags = tag_detector.detect(new_frame)
 
     #Need at least 3 tags for boundaries
     if len(tags) < 3:
@@ -518,7 +530,7 @@ def auto_detect_boundaries(camera):
     #Iterate for each tag detected
     for tag in tags:
 
-        cropped_tag = new_frame_gray
+        cropped_tag = new_frame
         
         #Cast corners to tuple integer pairs
         center = (int(tag.center[0]), int(tag.center[1]))
@@ -547,7 +559,7 @@ def auto_detect_boundaries(camera):
                                         [RESOLUTION_WIDTH-1, 1]])
         corners_h = np.float32(corners)
         tag_homography = cv2.getPerspectiveTransform(corners_h, target_corners)
-        cropped_tag = new_frame_gray
+        cropped_tag = new_frame
         cropped_tag = cv2.warpPerspective(cropped_tag, tag_homography, (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), flags=cv2.INTER_LINEAR)
         #cropped_tag_gray = cv2.cvtColor(cropped_tag, cv2.COLOR_BGR2GRAY)
 
@@ -677,6 +689,7 @@ def add_tag(ip_addr, camera):
             return
 
     detected_tags.append(new_tag)
+    tag_id_lookup.append(str(new_tag.id))
 
 #Save all added tags to JSON file
 #Called by user when they push UI "Save" button
@@ -715,9 +728,11 @@ def open_tags():
 
         #Iterate through each tag in JSON file and add to detected_tags
         detected_tags.clear()
+        tag_id_lookup.clear()
         for tag in json_object:
             new_tag = ATag(tag["name"], tag["id"], tag["position"], tag["angle"], tag["desired pos"])
             detected_tags.append(new_tag)
+            tag_id_lookup.append(str(new_tag.id))
     
 #Start of Camera Code
 def main_camera(commBuf=None):
@@ -748,6 +763,7 @@ def main_camera(commBuf=None):
         #Retrieve new frame from camera
         ret = None
         new_frame = None
+        tags = None
         if USE_CAMERA:
             ret, new_frame = camera.read()
         else:
@@ -765,7 +781,7 @@ def main_camera(commBuf=None):
         if ADD_TAG_FUNC:
             add_tag(added_tag_ip, camera)
             ADD_TAG_FUNC = False
-        
+
         #Convert new frame to gray scale
         new_frame_gray = cv2.cvtColor(new_frame, cv2.COLOR_BGR2GRAY)
 
