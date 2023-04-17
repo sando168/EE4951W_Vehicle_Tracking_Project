@@ -17,29 +17,6 @@ import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
 import time
 
-def globalSetup():
-    global video_stream_title 
-    video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
-    global camera
-    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)                          #Open video camera
-    global tag_detector
-    tag_detector = apriltag.Detector()                      #Create tag detection object
-    global current_time
-    current_time = 1.0
-    global previous_time
-    previous_time = 1.0
-
-    #Dynamic array of detected tags including the tags outlining the boundaries of the play field
-    #The first three entries in the array are fixed in the order below
-    global world_coordinate
-    world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0, (0,0))
-    global top_bound
-    top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0, (0,0))
-    global right_bound
-    right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
-    global detected_tags
-    detected_tags = [world_coordinate, top_bound, right_bound]
-
 class ATag:
     descriptor = 'tag'
     id = BitArray(0)
@@ -124,6 +101,75 @@ class ATag:
 
         self.sendData("r {}".format(self.desired_angle))
         print("rotate() Sent!")
+
+class ThreadedCamera:
+
+    ret = None
+    frame = None
+    global USE_CAMERA
+
+    def __init__(self):
+        
+        self.camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)             #Open video camera
+        USE_CAMERA = self.setup_camera()
+
+        self.ret, self.frame = self.camera.read()
+
+        self.thread = threading.Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
+
+    #Setup function before streaming video
+    def setup_camera(self):
+
+        #Error and stop program if not connected
+        if not(self.camera.isOpened()):
+            print('ERROR: Unable to connect to camera')
+            return False
+        else:
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
+            self.camera.set(cv2.CAP_PROP_FPS, FRAMERATE)
+            self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+            self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 0)
+            return True
+
+    #Update video frames
+    def update(self):
+
+        while self.camera.isOpened():
+
+            self.ret, self.frame = self.camera.read()
+
+    #Return video frames
+    def read(self):
+
+        return self.ret, self.frame
+
+    def release(self):
+
+        self.camera.release()
+
+def globalSetup():
+    global video_stream_title 
+    video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
+    global tag_detector
+    tag_detector = apriltag.Detector(nthreads=8, quad_decimate=2.0)            #Create tag detection object
+    global current_time
+    current_time = 1.0
+    global previous_time
+    previous_time = 1.0
+
+    #Dynamic array of detected tags including the tags outlining the boundaries of the play field
+    #The first three entries in the array are fixed in the order below
+    global world_coordinate
+    world_coordinate = ATag('world_coordinate', BitArray(0), (RESOLUTION_WIDTH,0), 0, (0,0))
+    global top_bound
+    top_bound =        ATag('top_bound',        BitArray(0), (RESOLUTION_WIDTH,RESOLUTION_HEIGHT), 0, (0,0))
+    global right_bound
+    right_bound =      ATag('right_bound',      BitArray(0), (0,0), 0, (0,0))
+    global detected_tags
+    detected_tags = [world_coordinate, top_bound, right_bound]
 
 #Setup function for creating vehicle UI window
 def setup_gui():
@@ -308,10 +354,6 @@ def run_gui():
 #Run server in a separate thread
 def run_server():
 
-    #Get IP address of machine
-    #HOST = socket.gethostbyname(socket.gethostname())  # The server's hostname or IP address
-    HOST = "10.131.111.155"
-
     #Open, bind, and start listenting for vehicles on socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((HOST, PORT))
@@ -340,21 +382,7 @@ def run_server():
                 data = "u {x:.3f} {y:.3f} {r:.3f}".format(x=tag.position[0],y=tag.position[1],r=tag.angle)
                 connection.send(data.encode())
         
-        connection.close()
-
-#Setup function before streaming video
-def setup_camera():
-
-    #Error and stop program if not connected
-    if not(camera.isOpened()):
-        print('ERROR: Unable to connect to camera')
-        return False
-    else:
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT)
-        camera.set(cv2.CAP_PROP_FPS, FRAMERATE)
-        camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")) # add this line
-        return True
+        connection.close()   
 
 #Iterate over AprilTags in camera frame
 def process_tags(tags, new_frame):
@@ -458,7 +486,7 @@ def process_tags(tags, new_frame):
 
 #Setup function for determining the boundary tags within the frame
 #Can be called by user within the UI for resetting bounds
-def auto_detect_boundaries():
+def auto_detect_boundaries(camera):
     
     global detected_tags
 
@@ -562,7 +590,7 @@ def auto_detect_boundaries():
 
 #Bind IP address to tag ID by capturing image of tag
 #Called by user when they push UI "Capture" button
-def add_tag(ip_addr):
+def add_tag(ip_addr, camera):
 
     global detected_tags
 
@@ -691,8 +719,6 @@ def open_tags():
             new_tag = ATag(tag["name"], tag["id"], tag["position"], tag["angle"], tag["desired pos"])
             detected_tags.append(new_tag)
     
-    print(len(detected_tags))
-
 #Start of Camera Code
 def main_camera(commBuf=None):
 
@@ -710,12 +736,11 @@ def main_camera(commBuf=None):
 
     #Setup functions
     globalSetup()
-    USE_CAMERA = setup_camera()
+    camera = ThreadedCamera()
     gui_thread = threading.Thread(target=run_gui, args=())
     gui_thread.start()
     server_thread = threading.Thread(target=run_server, args=())
     server_thread.start()
-    auto_detect_boundaries()
 
     #Start of while(1) loop that runs forever
     while True:
@@ -735,10 +760,10 @@ def main_camera(commBuf=None):
 
         #Check UI events within separate thread
         if DETECT_BOUNDARIES:
-            auto_detect_boundaries()
+            auto_detect_boundaries(camera)
             DETECT_BOUNDARIES = False
         if ADD_TAG_FUNC:
-            add_tag(added_tag_ip)
+            add_tag(added_tag_ip, camera)
             ADD_TAG_FUNC = False
         
         #Convert new frame to gray scale
@@ -747,10 +772,8 @@ def main_camera(commBuf=None):
         #Detect AprilTags
         tags = tag_detector.detect(new_frame_gray)
 
-        #Process tags in camera frame within a non-blocking thread
-        tag_processing_thread = threading.Thread(target=process_tags, args=(tags,new_frame_gray))
-        tag_processing_thread.start()
-        tag_processing_thread.join()
+        #Process tags in camera frame
+        process_tags(tags, new_frame_gray)
 
         #Display video stream
         cv2.imshow(video_stream_title, new_frame_gray)
