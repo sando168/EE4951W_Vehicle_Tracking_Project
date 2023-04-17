@@ -2,6 +2,7 @@
 #include "vehicle.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "math.h"
 
 #define MOTOR_PWM 255
 #define factorK 100
@@ -13,18 +14,18 @@ float destX = -9999;
 float destY = -9999;  
 float currX = -9999; 
 float currY = -9999; 
-float currR = -9999; 
+float currTheta = -9999; 
 float distance = -9999; 
-float angle = -9999;
+float phiValue = -9999;
+float lambdaValue = -9999; 
 
 float s = -9999;
-float sum = -9999;
-float diff = -9999;
+float increase; 
 
 bool getDestination = false; 
 bool getLocation = false; 
-int pwmValueM1; 
-int pwmValueM2; 
+int pwmM1 = -45; 
+int pwmM2 = 43; 
 
 /* ----- Global Variables for Wifi command parsing ----- */
  
@@ -131,34 +132,33 @@ void setup()
 void printGlobalFloats(void){
   
   Serial.print("currX = ");
-  Serial.print(currX, 3);
+  Serial.print(currX*3.281, 3);
   Serial.print("\n");
     
   Serial.print("currY = ");
-  Serial.print(currY, 3);
+  Serial.print(currY*3.281, 3);
   Serial.print("\n");
 
-  Serial.print("currR = ");
-  Serial.print(currR, 3);
+  Serial.print("currTheta = ");
+  Serial.print(currTheta, 3);
   Serial.print("\n");
     
   Serial.print("destX = ");
-  Serial.print(destX, 3);
+  Serial.print(destX*3.281, 3);
   Serial.print("\n");
     
   Serial.print("destY = ");
-  Serial.print(destY, 3);
+  Serial.print(destY*3.281, 3);
   Serial.print("\n");
     
-  Serial.print("distance = ");
-  Serial.print(distance, 3);
-  Serial.print("\n");
+  // Serial.print("distance = ");
+  // Serial.print(distance, 3);
+  // Serial.print("\n");
     
-  Serial.print("angle = ");
-  Serial.print(angle, 3);
-  Serial.print("\n");
+  // Serial.print("angle = ");
+  // Serial.print(angle, 3);
+  // Serial.print("\n");
 }
-
 
 void ESP32asClient()
 {
@@ -175,6 +175,8 @@ void ESP32asClient()
         //Client.println("packet recieved");          //        acknowledge to client that packet was received by ESP32
       }
     }
+    Serial.print("\nSTR: "); 
+    Serial.println(str); 
     
     str.toCharArray(data_str, 21);
   
@@ -195,7 +197,7 @@ void ESP32asClient()
         getLocation = true; 
         currX = value1/3.281; 
         currY = value2/3.281; 
-        currR = value3;
+        currTheta = value3;
         break;
       case 'd': 
         getDestination = true; 
@@ -206,7 +208,7 @@ void ESP32asClient()
         distance = value1;
         break;
       case 'r': 
-        angle = value1;
+        phiValue = value1;
         break;
     }
     
@@ -219,17 +221,74 @@ void ESP32asClient()
     return;  
   }
   
-  if (getDestination && getLocation)
+  if (getLocation)   // && getDestination - recieve both values to start going so hard coding destination is not required
   {
-    s = deltaS(currX, currY, destX, destY);
+    distance = deltaS(currX, currY, (2/3.281), (1/3.281));
+    phiValue = optimalAngle(currX, currY, (2/3.281), (1/3.281));    //artan2 returns angle between -180 to 180 
+    Serial.print("\nAngle phi is"); 
+    Serial.println(phiValue);
+    Serial.print("\nDelta s is");
     Serial.println(s); 
-    if (s < 0.05){
-      motor(0, 0); 
+    if (distance < 0.1){  //0.05 check if the vehicle is at the destination
+      pwmM1 = 0;
+      pwmM2 = 0;
     }
     else {
-      motor(-50, 55);  //going straight at a constant speed 
+      //determine which direction 
+      lambdaValue = abs(currTheta - phiValue);   //lambda is the optimal shortest angle between theta and phi
+      if (lambdaValue > 180)
+      {
+        lambdaValue = 360 - lambdaValue;     //if the lambda is above 180, the optimal angle is 360 - lambda. 
+      }
+      //turning theta to phi from -180 -> 180 to 0 -> 360  //lambda is 200 degrees -> optimal angle is 160 degrees, turn left
+      currTheta = currTheta + 180;   //if theta is 70 degrees, add 180 -> 240 degrees
+      phiValue = phiValue + 180;     //if phi is -130 degrees, add 180 -> 50 degrees
+      /*
+      if (currTheta < 0)             //theta = 90 phi = 120 -> lambda = 30 
+      {
+        currTheta = currTheta + 360;   //currTheta is still 70 degrees
+      }
+      if (phiValue < 0)
+      {
+        phiValue = phiValue + 360;     //phi is -130 + 360 = 230 degrees    //70 + 160 = 230 = phi -> turn left
+      }
+      */
+      if ( ((int(phiValue)+1) > (int(currTheta) + int(lambdaValue)) %360) &&  ((int(currTheta) + int(lambdaValue)) %360) > (int(phiValue) - 1))
+      {
+        //turn left                  //240 + 160 = 400 % 360 = 40 is not equal to 50, turn right. 
+        if (lambdaValue > 5)
+        {
+          increase = 0.5*lambdaValue; 
+          pwmM2 = 43 + increase/2; //speed up    pwmM2 += 43 + increase/2;
+          //pwmM2 = 43 + increase*0.7; 
+          pwmM1 = -45 + increase/2; //slow down
+          //pwmM1 = -45 + increase*0.3; 
+        }
+        else
+        {
+          pwmM1 = -45;
+          pwmM2 = 43; 
+        } 
+      }
+      else 
+      {
+        //turn right 
+        if (lambdaValue > 5)
+        {
+          increase = -0.2+lambdaValue; 
+          pwmM1 = -45 + increase/2; //speed up pwmM1 += -45 + increase/2;
+          //pwmM1 = -45 + increase*0.7; 
+          pwmM2 = 43 - increase/2;   //slow down
+          //pwmM2 = 43 - increase*0.3; 
+        }
+        else
+        {
+          pwmM1 = -45;
+          pwmM2 = 43; 
+        } 
+      }
     }
-    
+    motor(pwmM1, pwmM2);  //going straight at a constant speed
     getLocation = false; 
   }
 }
