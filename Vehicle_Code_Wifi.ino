@@ -27,10 +27,14 @@ char command;    // first char of command determines what command it is (ex. 'u'
 float value1;    // parsing will update these values  
 float value2; 
 float value3; 
-char data_str[21];    // make a char array to hold incoming data from the client
+float value4; 
+float value5; 
+char data_str[40];    // make a char array to hold incoming data from the client
 char* space1;
 char* space2;
 char* space3;
+char* space4;
+char* space5;
 
 /* ----- Global Variables for WiFi Functionality (Normal Network) ----- */
 /*
@@ -158,43 +162,37 @@ void printGlobalFloats(void){
 
 void loop()
 {
+  //motor(-37, 38); 
   String str = "---";
   
   Serial.println("Connecting to server....");
-  if (Client.connect(server, port)){             // if ESP32 can connect to server
+  if (Client.connect(server, port)){              // if ESP32 can connect to server
     Serial.println("server connected");
     while (true){
       Serial.println("sending a request...");
-      Client.println("www.google.com");            //    send a request to Server
-  
-      /*
-      while (Client.connected()) {                 //    loop while there is a data stream connection
-        while (Client.available()) {               //    if there's bytes to read from the client,
-          char c = Client.read();                  //        save byte/char to data char array
-          Serial.write(c);                         //        print char out the serial monitor
-          str += c;                                //        append char to string variable
-          //Client.println("packet recieved");     //        acknowledge to client that packet was received by ESP32
-        }
-      }
-      */
-      str = Client.readStringUntil('\n');
+      Client.println("Requesting data...");       //     send a request to Server
+      str = Client.readStringUntil('\n');         //     read the data sent from the server
       
       Serial.print("\nSTR: "); 
       Serial.println(str); 
-      str.toCharArray(data_str, 21);
+      str.toCharArray(data_str, 40);              //     convert the string into a char array
 
-      if (data_str[0] != NULL){
+      if (data_str[0] != NULL){                   // if a data has been received
         Serial.println("Started data parsing.");
-          
-        command = data_str[0];                    // save char indicating type of command
-        space1 = strstr(data_str, " ");           // find the first space (delimiter)
-        
-        value1 = strtof(space1, &space2);         // save the first float value
-        value2 = strtof(space2, &space3);         // save the second float value
-        value3 = strtof(space3, NULL);            // save the third float value
 
-        value1 = value1/3.281;                    // convert from ft to metric
-        value2 = value2/3.281;                    // convert from ft to metric
+        command = data_str[0];                    //     save char indicating type of command   
+        space1 = strstr(data_str, " ");           //     find the first space (delimiter)
+        
+        value1 = strtof(space1, &space2);         //     save the first float value
+        value2 = strtof(space2, &space3);         //     save the second float value
+        value3 = strtof(space3, &space4);         //     save the third float value
+        value4 = strtof(space4, &space5);         //     save the fourth float value
+        value5 = strtof(space5, NULL);            //     save the fifth float value
+
+        value1 = value1/3.281;                    //     convert from ft to metric
+        value2 = value2/3.281;                    //     convert from ft to metric
+        value4 = value4/3.281;                    //     convert from ft to metric
+        value5 = value5/3.281;                    //     convert from ft to metric
           
         switch(command)   // depending on the command, save the corresponding values 
         {
@@ -203,6 +201,8 @@ void loop()
             currX = value1; 
             currY = value2; 
             currTheta = value3;
+            destX = value4; 
+            destY = value5; 
             break;
           case 'd': 
             getDestination = true; 
@@ -220,10 +220,10 @@ void loop()
         printGlobalFloats();
       }
 
-      if (getLocation)   // && getDestination - recieve both values to start going so hard coding destination is not required
+      if (getLocation)   
       {
-        distance = deltaS(currX, currY, (destX/3.281), (destY/3.281));          //destination is hard coded to 2ft by 1 ft 
-        phiValue = optimalAngle(currX, currY, (destX/3.281), (destY/3.281));    //artan2 returns angle between -180 to 180 
+        distance = deltaS(currX, currY, destX, destY);          
+        phiValue = optimalAngle(currX, currY, destX, destY);    //artan2 returns angle between -180 to 180 
 
         Serial.print("\nDelta s is ");
         Serial.println(distance); 
@@ -244,9 +244,7 @@ void loop()
           Serial.print("Lambda is: "); 
           Serial.println(lambdaValue); 
 
-          //turning theta to phi from -180 -> 180 to 0 -> 360  //lambda is 200 degrees -> optimal angle is 160 degrees, turn left
-
-          if (currTheta < 0)            
+          if (currTheta < 0)                         //Changing the angle range from -180 -> 180 to 0 to 360
           {
             currTheta = currTheta + 360;  
           }
@@ -255,22 +253,22 @@ void loop()
             phiValue = phiValue + 360;     
           }
           
+          //Determining the direction to turn
           if ( ((int(phiValue)+2) > ((int(currTheta) + int(lambdaValue)) %360)) &&  (((int(currTheta) + int(lambdaValue)) %360) > (int(phiValue) - 2)) )
           {
             //turn left                  
             if (lambdaValue > 5)
             {
               Serial.println("turn left"); 
-              increase = 0.5*lambdaValue; 
-              //increase = max(increase, 40); 
-              //increase = min(increase, 120); 
-              pwmM2 = 43 + increase;       //speed up  
-              pwmM1 = -45 + increase*0.5;  //slow down
+              increase = 0.5*lambdaValue;               //get a portion of the lambdaValue
+              //The value of distance is added so as the vehicle is closer, the speed decreases
+              pwmM2 = 38 + distance*3 + increase;       //speed up  
+              pwmM1 = -37 + distance*3 + increase*0.5;  //slow down  43 -45
             }
             else
             {
-              pwmM1 = -45;      //reset speed to go straight
-              pwmM2 = 43; 
+              pwmM1 = -37;      //reset speed to go straight
+              pwmM2 = 38; 
             } 
           }
           else 
@@ -279,19 +277,18 @@ void loop()
             if (lambdaValue > 5)
             {
               Serial.println("Turn right"); 
-              increase = -0.7*lambdaValue; 
-              //increase = max(increase, 40); 
-              //increase = min(increase, 120); 
-              pwmM1 = -45 + increase;       //speed up 
-              pwmM2 = 43 + increase*0.4;    //slow down
+              increase = -0.7*lambdaValue;               //get a portion of the lambdaValue
+              pwmM1 = -37 + distance*3 + increase;       //speed up 
+              pwmM2 = 38 + distance*3 + increase*0.4;    //slow down
             }
             else
             {
-              pwmM1 = -45;     //reset speed to go straight
-              pwmM2 = 43; 
+              pwmM1 = -37;     //reset speed to go straight
+              pwmM2 = 38; 
             } 
           }
         }
+        //printing the pwm to serial monitor
         Serial.print("pwmM1 is : "); 
         Serial.println(pwmM1); 
         Serial.print("pwmM2 is : "); 
