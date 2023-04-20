@@ -283,6 +283,7 @@ def run_gui():
                 y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
                 center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
 
+                imgui.text("Connected: " + str(added_tag.connected))
                 imgui.text("Center: (" + "{:.2f}".format(center[0]) + ", " + "{:.2f}".format(center[1]) + ")")
                 imgui.text("Angle: " + "{:.2f}".format(added_tag.angle))
 
@@ -374,6 +375,8 @@ def run_server():
         try:
             buf = connection.recv(1024)
         except:
+            for tag in detected_tags:
+                tag.connected = False
             connection, address = sock.accept()
             print("Connected to: ", address)
 
@@ -775,7 +778,7 @@ def main_camera(commBuf=None):
             ret = True
 
         #Check if new_frame is correct
-        if not(ret):
+        if not(ret):    
             break
 
         #Check UI events within separate thread
