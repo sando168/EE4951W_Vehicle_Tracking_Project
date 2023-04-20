@@ -461,11 +461,13 @@ def process_tags(tags, new_frame):
         y_dimension_per_pixel = AREA_HEIGHT / (detected_tags[0].position[1] - detected_tags[1].position[1] + 0.000001)
         center = (center[0]*x_dimension_per_pixel, center[1]*y_dimension_per_pixel)
         
+        added_tag = detected_tags[0]
         try:
             index = tag_id_lookup.index(str(id))
+            added_tag = detected_tags[index]
         except:
             continue
-        added_tag = detected_tags[index]
+        
 
         #Update list of added tags
         if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
@@ -487,7 +489,7 @@ def process_tags(tags, new_frame):
             else:
                 cv2.drawContours(new_frame, [corners], 0, (255,0,0), 3)
         elif SHOW_TAG_IDENTIFICATION:
-            new_frame = cropped_tag
+            return cropped_tag
 
         #Draw red line from center of tag to indicate angle
         if OUTLINE_ANGLE:
@@ -495,6 +497,8 @@ def process_tags(tags, new_frame):
             length = int(length / 2)
             end_point = (int(center_img[0] + length*np.cos(theta)), int(center_img[1] + length*np.sin(-1*theta)))
             cv2.line(new_frame, center_img, end_point, (0,0,255), 3)
+
+    return new_frame
 
 #Setup function for determining the boundary tags within the frame
 #Can be called by user within the UI for resetting bounds
@@ -789,7 +793,7 @@ def main_camera(commBuf=None):
         tags = tag_detector.detect(new_frame_gray)
 
         #Process tags in camera frame
-        process_tags(tags, new_frame_gray)
+        new_frame_gray = process_tags(tags, new_frame_gray)
 
         #Display video stream
         cv2.imshow(video_stream_title, new_frame_gray)
