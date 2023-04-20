@@ -5,7 +5,7 @@
 #              Controller.py file
 # Dependencies: None
 
-HOST = "10.131.111.155"
+HOST = "10.131.91.207"
 V1ADDRESS = "10.131.105.157" # The ip address of vehicle 1
 PYADDRESS = "10.0.0.72"
 PYPORT = 80 # Dev Port

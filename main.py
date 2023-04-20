@@ -159,7 +159,7 @@ def globalSetup():
     global previous_time
     previous_time = 1.0
     global tag_detector
-    tag_detector = apriltag.Detector(nthreads=4, quad_decimate=3.0)
+    tag_detector = apriltag.Detector(nthreads=4, quad_decimate=2.0)
 
     #Dynamic array of detected tags including the tags outlining the boundaries of the play field
     #The first three entries in the array are fixed in the order below
@@ -302,7 +302,7 @@ def run_gui():
                             #Check if input is in play area bounds
                             if 0.0 <= coords[0] and coords[0] <= AREA_WIDTH and 0 <= coords[1] and coords[1] <= AREA_HEIGHT:
                                 added_tag.desired_pos = coords
-                                added_tag.moveToPoint()
+                                #added_tag.moveToPoint()
                             else:
                                 print('ERROR: Unable to set position. Not within pleay area bounds.')
                     except:
@@ -386,10 +386,10 @@ def run_server():
                 tag.connected = True
 
                 #Send information
-                data = "u {x:.3f} {y:.3f} {r:.3f} \n".format(x=tag.position[0],y=tag.position[1],r=tag.angle)
+                data = "u {x:.3f} {y:.3f} {r:.3f} {u:.3f} {v:.3f}\n".format(x=tag.position[0],y=tag.position[1],r=tag.angle,u=tag.desired_pos[0],v=tag.desired_pos[1])
                 connection.send(data.encode())
         
-        #connection.close()
+    connection.close()
 
 #Iterate over AprilTags in camera frame
 def process_tags(tags, new_frame):
