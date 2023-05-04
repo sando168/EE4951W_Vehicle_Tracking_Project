@@ -36,8 +36,9 @@ python3 main_camera.py
 ```
 
 # VirtualBox
-For anyone using a Windows based machine that wants to run this project, VirtualBox is the recommended
-means of installation and execution. VirtualBox is a program that can deploy different operating systems within separate windows. Below is a series of steps for getting the project running on VirtualBox.
+For anyone using a Windows based machine that wants to run this project on Linux, VirtualBox is the recommended means of installation and execution. 
+VirtualBox is a program that can deploy different operating systems within separate windows. 
+Below is a series of steps for getting the project running on VirtualBox.
 
 ## Download
 [VirtualBox Link](https://www.virtualbox.org/wiki/Downloads)
@@ -54,7 +55,7 @@ means of installation and execution. VirtualBox is a program that can deploy dif
 6. Name the virtual machine and click on the Linux download for "ISO image"
 7. Edit the unattended guest username and password to something memorable
 8. Increasing the amount of RAM to at least 8GB is recommended
-9.  A standard 25GB virtual disk is more than plenty
+9. It's recommended to increase this disk space from 25GB to +50GB
 10. Hit "Finish"
 
 ## Linux Setup
