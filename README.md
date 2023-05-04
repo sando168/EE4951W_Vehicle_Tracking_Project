@@ -79,17 +79,14 @@ sudo apt upgrade
 sudo apt install python3-pip
 sudo apt install git
 sudo apt install cmake
-pip3 install opencv-python
-pip3 install bitstring
+sudo apt-get install python3-tk
 
-git clone https://github.com/swatbotics/apriltag
-cd apriltag
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
-sudo make install
-pip3 install apriltag
+pip3 install pupil-apriltags
+pip3 install opencv-python
+pip3 install imgui[all]
+pip3 install glfw
+pip3 install PyOpenGL
+pip3 install bitstring
 
 git clone https://github.umn.edu/bensc010/EE4951W_Vehicle_Tracking_Project
 cd EE4951W_Vehicle_Tracking_Project
