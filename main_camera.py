@@ -3,13 +3,11 @@ import cv2
 import pupil_apriltags as apriltag
 import numpy as np
 import json
-import os
 from tkinter import *
 from tkinter import filedialog
 from bitstring import BitArray
 from Constants import *
 import threading
-import signal
 
 import imgui
 import glfw

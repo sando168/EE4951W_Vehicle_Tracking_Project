@@ -1,10 +1,3 @@
-# Requirements
-- Design a single prototype of a vehicle which can connect to a WiFi network and receive commands from the network moving accordingly.
-- ESP32 architecture is recommended to keep the vehicle small. 
-- Replicate the prototype to build at least one additional vehicle.
-- Realize a video processing system that can monitor the positions of the vehicles which are assumed to move on a limited rectangular area on the floor of a lab.
-- The video processing system should be able to output the coordinates of the positions of the vehicles and send instructions to them on how to move.
-- The vehicles should be able to follow a specified path.
 
 # Prerequisites
 - [Python 3](https://www.python.org/downloads/)
@@ -15,18 +8,12 @@ Run these commands in a Linux terminal.
 ```
 sudo apt install cmake
 sudo apt-get install python3-tk
+pip3 install pupil-apriltags
 pip3 install opencv-python
 pip3 install imgui[all]
+pip3 install glfw
+pip3 install PyOpenGL
 pip3 install bitstring
-
-git clone https://github.com/swatbotics/apriltag.git
-cd apriltag
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
-sudo make install
-pip3 install apriltag
 ```
 
 # Installation: Windows
