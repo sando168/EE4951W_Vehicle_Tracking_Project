@@ -371,10 +371,15 @@ def run_server():
 
         #Place incoming data in to buffer
         try:
-            buf = connection.recv(1024)
+            buf = connection.recv(20)
+            print(buf)
         except:
             for tag in detected_tags:
                 tag.connected = False
+            # connection.close()
+            # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # sock.bind((HOST, PORT))
+            # sock.listen()
             connection, address = sock.accept()
             print("Connected to: ", address)
 
@@ -388,12 +393,15 @@ def run_server():
 
                 #Send information
                 data = "u {x:.3f} {y:.3f} {r:.3f} {u:.3f} {v:.3f}\n".format(x=tag.position[0],y=tag.position[1],r=tag.angle,u=tag.desired_pos[0],v=tag.desired_pos[1])
+                print("\n")
+                print(data)
                 connection.send(data.encode())
-        
-    connection.close()
 
 #Iterate over AprilTags in camera frame
 def process_tags(tags, new_frame):
+
+    global detected_tags
+    global tag_id_lookup
 
     #Outline each detected tag with a square
     id = BitArray(0)
@@ -467,14 +475,14 @@ def process_tags(tags, new_frame):
             index = tag_id_lookup.index(str(id))
             added_tag = detected_tags[index]
         except:
-            continue
+            pass
         
 
         #Update list of added tags
         if added_tag.id == str(id) and added_tag.id != detected_tags[0].id  and added_tag.id != detected_tags[1].id  and added_tag.id != detected_tags[2].id:
             if(added_tag.angle != angle or added_tag.position != center):
-                added_tag.angle = angle
-                added_tag.position = center
+                detected_tags[index].angle = angle
+                detected_tags[index].position = center
 
         #Draw the arbitrary contour from corners since the tag could be rotated
         if OUTLINE_TAGS:
@@ -506,6 +514,7 @@ def process_tags(tags, new_frame):
 def auto_detect_boundaries(camera):
     
     global detected_tags
+    global tag_detector
 
     #Retrieve new frame from camera
     ret = None
@@ -595,9 +604,10 @@ def auto_detect_boundaries(camera):
                 detected_tags[1].angle = angle
 
             #World Coordinate
-            detected_tags[0].id = id
-            detected_tags[0].position = center
-            detected_tags[0].angle = angle
+            else:
+                detected_tags[0].id = id
+                detected_tags[0].position = center
+                detected_tags[0].angle = angle
 
         #Right Boundary
         elif center[0] > detected_tags[2].position[0]:
