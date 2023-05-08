@@ -1,21 +1,63 @@
+
+
+"""@package docstring
+main_camera.py is the Python 3 script to run in order to:
+    - Open and stream frames on a separate thread from the first camera device
+    - Detect AprilTags within the camera frame
+    - Create and open a server to connect to all added vehicle IPs
+    - Run a GUI for easier management of connected vehicles
+ 
+In order to install packages and execute this script, follow the
+instructions on the README.md
+"""
+
+# General purpose imports
 import socket
+import time
+import threading
+from Constants import *
+
+# Computer vision imports
 import cv2
 import pupil_apriltags as apriltag
 import numpy as np
-import json
-from tkinter import *
-from tkinter import filedialog
 from bitstring import BitArray
-from Constants import *
-import threading
 
+# Graphical User interface imports
 import imgui
 import glfw
 import OpenGL.GL as gl
 from imgui.integrations.glfw import GlfwRenderer
-import time
+from tkinter import *
+from tkinter import filedialog
+import json
 
 class ATag:
+
+    """
+    This ATag class is used for containing all relevant information for one
+    added AprilTag in detected_tags[]. This includes the tags within
+    the top left, bottom left, and bottom right corners of the field, as well as
+    any added vehicles.
+ 
+    Class Attributes
+    ----------------
+    descriptor - IP address of the connected vehicles
+    id - BitArray class object from the BitString import. Generated from
+         the tag identification process documented in process_tags()
+    position - Tuple pair of 2D coordinates marking tag position within 
+               the testing space in unit dimensions
+    angle - Float value describing the angular orientation of the tag in degrees, [-180, 180)
+    desired_pos - Tuple pair of 2D coordinates marking the destination of the tag in
+                  unit dimensions
+    desired_distance - Float value describing the set distance to travel in a straight line.
+                       NOT CURRENTLY IN USE
+    desired_angle - Float value descring the set angle to turn to, [-180, 180).
+                    NOT CURRENTLY IN USE
+    sock - Socket connection that respective data is passed through
+    connected - Boolean connection status
+    """
+
     descriptor = 'tag'
     id = BitArray(0)
     position = (0,0)
@@ -23,6 +65,25 @@ class ATag:
     angle = 0.0
 
     def __init__ (self, descr, id, pos, angle, des):
+
+        """ ATag init()
+ 
+        This initialization function is used to define the class attributes
+        as listed above.
+
+        @Params
+        ------
+        descr - String ip address
+        id - BitArray class object providing the unique tag ID
+        pos - Tuple pair of Floats describing the 2D coordinate position in unit dimensions
+        angle - Float value describing the angular orientation of the tag, [-180, 180)
+        des - Tuple pair of Floats describing the desired position of the tag in unit dimensions
+
+        @Returns
+        -------
+        None
+        """
+
         self.descriptor = descr
         self.id = id
         self.position = pos
@@ -34,19 +95,23 @@ class ATag:
         self.connected = False
     
     def sendData(self, data):
-        """Helper function to send data to the vehicle.
+        """ ATag sendData()
+        Helper function to send data to the vehicle.
 
-        Parameters
-        ----------
-        data : str
-            The data to be sent to the vehicle
+        @Params
+        -------
+        data - String of data to be sent to the vehicle
+
+        @Return
+        -------
+        None
         """
         if not self.connected:
             self.sock.connect((self.descriptor, PORT))
             self.connected = True
             print("Connected to {}".format(self.descriptor))
 
-        # IDK why but the data needs to be encoded, otherwise it doesn't work
+        # The data needs to be encoded, otherwise it doesn't work
         # The current implementation of this function is leaving the connection
         # open the entire time. The alternative is to open and close the connection
         # using line 50 every time sendData() is called.
@@ -102,12 +167,43 @@ class ATag:
 
 class ThreadedCamera:
 
+    """
+    This ThreadedCamera class object is used to read video frames from the
+    0-indexed camera device in parallel to main(). Reading frames is a blocking
+    operation, so parallelizing this process makes reading frames from the stack
+    faster.
+ 
+    Class Attributes
+    ----------------
+    camera - OpenCV VideoCapture() object that's opened on the 0-indexed camera device
+    ret - Boolean returned frame from camera status
+    frame - RESOLUTION_HEIGHT x RESOLUTION_WIDTH x 3 matrix of pixel values
+    thread - Thread class object used to read camera frames in parallel
+    USE_CAMERA - Boolean status variable describing if a camera was successfully opened
+    """
+
     ret = None
     frame = None
     tags = None
     global USE_CAMERA
 
+
     def __init__(self):
+
+        """ ThreadedCamera init()
+ 
+        This function opens the 0-indexed camera device.
+        It also opens a separate thread that runs the update()
+        function in parallel.
+
+        @Params
+        ------
+        None
+
+        @Returns
+        -------
+        None
+        """
         
         self.camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)             #Open video camera
         USE_CAMERA = self.setup_camera()
@@ -118,8 +214,22 @@ class ThreadedCamera:
         self.thread.daemon = True
         self.thread.start()
 
-    #Setup function before streaming video
     def setup_camera(self):
+
+        """ ThreadedCamera setup_camera()
+ 
+        This function first checks to see if the camera was successfully opened.
+        If so, the resolution height, resolution width, framerate, and video
+        encoding are set.
+
+        @Params
+        ------
+        None
+
+        @Returns
+        -------
+        Boolean True on success, False on error
+        """
 
         #Error and stop program if not connected
         if not(self.camera.isOpened()):
@@ -133,23 +243,86 @@ class ThreadedCamera:
             self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 0)
             return True
 
-    #Update video frames
     def update(self):
+
+        """ ThreadedCamera update()
+ 
+        This function is opened on a separate thread, and continuously reads new frames
+        from the opened camera. The returned frame Boolean status, and the new frame
+        data are both updated within the ret and frame class attributes respectively
+
+        @Params
+        ------
+        None
+
+        @Returns
+        -------
+        None
+        """
 
         while self.camera.isOpened():
 
             self.ret, self.frame = self.camera.read()
 
-    #Return video frames
     def read(self):
+
+        """ ThreadedCamera read()
+ 
+        This function returns the ret and frame class attributes
+        for the main() function to use within detecting tags
+
+        @Params
+        ------
+        None
+
+        @Returns
+        -------
+        ret - Boolean returned frame status. True on success, False on error
+        frame - RESOLUTION_HEIGHT x RESOLUTION_WIDTH x 3 frame matrix
+        """
 
         return self.ret, self.frame
 
     def release(self):
 
+        """ ThreadedCamera release()
+ 
+        This function releases the opened camera device
+
+        @Params
+        ------
+        None
+
+        @Returns
+        -------
+        None
+        """
+
         self.camera.release()
 
 def globalSetup():
+
+    """ globalSetup()
+ 
+    This function defines and initializes the global variables:
+        - video_stream_title
+        - current_time
+        - previous_time
+        - tag_detector
+        - world_coordinate
+        - top_boundary
+        - right_boundary
+        - tag_id_lookup
+
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    None
+    """
+
     global video_stream_title 
     video_stream_title = 'Vehicle Tracking'                 #Title of tracking window
     global current_time
@@ -172,8 +345,21 @@ def globalSetup():
     global tag_id_lookup
     tag_id_lookup = [str(detected_tags[0].id), str(detected_tags[1].id), str(detected_tags[2].id)]
 
-#Setup function for creating vehicle UI window
 def setup_gui():
+
+    """ setup_gui()
+ 
+    This function creates the GUI window using GLFW to render the window, and ImGui
+    to render the specific graphic objects on screen
+
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    gui - glfw window class object used to render the ImGui graphics primitives
+    """
 
     #Initialize GLFW and detect for any errors
     if not(glfw.init()):
@@ -198,9 +384,25 @@ def setup_gui():
 
     return gui
 
-#Run GUI window in a separate thread
 def run_gui():
 
+    """ run_gui()
+ 
+    This function runs on a separate thread that's created in main().
+    It's responsible for continusouly rendering and updating the GUI
+    that displays the relevant tag information and provide debugging
+    tools.
+
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    None
+    """
+
+    # Global variables to read / write to
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
     global SHOW_TAG_IDENTIFICATION
@@ -340,9 +542,11 @@ def run_gui():
                         except:
                             print('ERROR: Unable to set go angle. Input should be a positive number.')
 
+        # Clear color buffer
         gl.glClearColor(1., 1., 1., 1)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
+        # End of ImGui frame
         imgui.end()
         imgui.render()
         imgui.end_frame()
@@ -353,15 +557,34 @@ def run_gui():
     impl.shutdown()
     glfw.terminate()
 
-#Run server in a separate thread
 def run_server():
 
-    #Open, bind, and start listenting for vehicles on socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind((HOST, PORT))
-    sock.listen()
+    """ run_server()
+ 
+    This function runs on a separate thread which is called from main().
+    It's responsible for creating and running a server on the HOST
+    IP address on the PORT port. If unable to open, the function will return.
+    If unable to connect, the server will start to listen for new connections.
 
-    print("....................Started Server: " + HOST + "....................")
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    None
+    """
+
+    #Open, bind, and start listenting for vehicles on socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((HOST, PORT))
+        sock.listen()
+    except:
+        print("Unable to create server on IP address and port: " + HOST + ", " + str(PORT))
+        return
+
+    print("....................Started Server: " + HOST + ": " + str(PORT) + "....................")
 
     #Accept vehicle connection
     connection, address = sock.accept()
@@ -372,14 +595,9 @@ def run_server():
         #Place incoming data in to buffer
         try:
             buf = connection.recv(20)
-            print(buf)
         except:
             for tag in detected_tags:
                 tag.connected = False
-            # connection.close()
-            # sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            # sock.bind((HOST, PORT))
-            # sock.listen()
             connection, address = sock.accept()
             print("Connected to: ", address)
 
@@ -393,12 +611,28 @@ def run_server():
 
                 #Send information
                 data = "u {x:.3f} {y:.3f} {r:.3f} {u:.3f} {v:.3f}\n".format(x=tag.position[0],y=tag.position[1],r=tag.angle,u=tag.desired_pos[0],v=tag.desired_pos[1])
-                print("\n")
-                print(data)
                 connection.send(data.encode())
 
-#Iterate over AprilTags in camera frame
 def process_tags(tags, new_frame):
+
+    """ process_tags()
+ 
+    This function takes the list of tags that were detected within the
+    current video frame as well as the video frame itself, and updates
+    all the vehicle information. Additionally, this function outlines
+    tags within new_frame and labels and corner tags that mark the boundaries
+    of the testing space.
+
+    @Params
+    ------
+    tags - List of detected tags within new_frame. Output from tag_detector.detect(new_frame)
+    new_frame - RESOLUTION_HEIGHT x RESOLUTION_WIDTH x 1 gray scale video frame
+
+    @Returns
+    -------
+    new_frame - RESOLUTION_HEIGHT x RESOLUTION_WIDTH x 1 gray scale video frame with added
+                outlines and text if selected in the GUI
+    """
 
     global detected_tags
     global tag_id_lookup
@@ -509,9 +743,25 @@ def process_tags(tags, new_frame):
 
     return new_frame
 
-#Setup function for determining the boundary tags within the frame
-#Can be called by user within the UI for resetting bounds
 def auto_detect_boundaries(camera):
+
+    """ auto_detect_boundaries()
+ 
+    This function is used to automatically mark the corner tags within the frame
+    by detecting all the AprilTags within 1 video frame, and seeing which tags
+    are furthest in the top left, bottom left, and bottom right. This information
+    is then updated within the global detected_tags[] variable. The function is called
+    at the beginning of main(), and can be called using the "Auto Detect Boundaries"
+    button in the GUI
+
+    @Params
+    ------
+    camera - ThreadedCamera class object to pull video frame from
+
+    @Returns
+    -------
+    None
+    """
     
     global detected_tags
     global tag_detector
@@ -615,9 +865,24 @@ def auto_detect_boundaries(camera):
             detected_tags[2].position = center
             detected_tags[2].angle = angle
 
-#Bind IP address to tag ID by capturing image of tag
-#Called by user when they push UI "Capture" button
 def add_tag(ip_addr, camera):
+
+    """ add_tag()
+ 
+    This function is called by hitting the "Capture" button in the GUI.
+    It's assumed that the desired tag to add is the only tag within frame.
+    Currently, this function can only be used to add vehicles. The new tag
+    is added to the detected_tags[] variable as an ATag class object
+
+    @Params
+    ------
+    ip_addr - String IP address of vehicle
+    camera - ThreadedCamera class object to read video frame from
+
+    @Returns
+    -------
+    None
+    """
 
     global detected_tags
 
@@ -706,9 +971,22 @@ def add_tag(ip_addr, camera):
     detected_tags.append(new_tag)
     tag_id_lookup.append(str(new_tag.id))
 
-#Save all added tags to JSON file
-#Called by user when they push UI "Save" button
 def save_tags(filename):
+
+    """ save_tags()
+ 
+    This function creates a new .json file saved under the filename parameter
+    when the "Save" button is pressed. The json file saves all 
+    the members of detected_tags[] and their respective ATag class attributes
+
+    @Params
+    ------
+    filename - String filename to save under
+
+    @Returns
+    -------
+    None
+    """
 
     #Iterate over array of vehicle and boundary tags
     with open(filename + '.json', 'w') as outfile:
@@ -729,9 +1007,22 @@ def save_tags(filename):
 
         outfile.write("]}")
     
-#Open and load configuration file with already added tags
-#Called by user when they push "Open" UI button
 def open_tags():
+
+    """ open_tags()
+ 
+    This function prompts the user with a file selection dialog when the "Open"
+    button is pressed in the GUI. The user is meant to select a .json file
+    that holds all the desired tags to update and read information on
+
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    None
+    """
 
     #Select file with explorer and return specific string
     config_file = filedialog.askopenfilename(title="Select a json file", filetypes=[("JSON files", "*.json*")])
@@ -749,8 +1040,24 @@ def open_tags():
             detected_tags.append(new_tag)
             tag_id_lookup.append(str(new_tag.id))
     
-#Start of Camera Code
 def main_camera(commBuf=None):
+
+    """ main_camera()
+ 
+    This is the main() function that starts the program. It begins by placing in to
+    separate threads: reading video frames, running a server, and running the GUI.
+    It then starts reading video frames from the threaded camera and detects the tags.
+    The detected tags have their information updated, and ends by displaying the current
+    video frame
+
+    @Params
+    ------
+    None
+
+    @Returns
+    -------
+    None
+    """
 
     global OUTLINE_TAGS
     global OUTLINE_ANGLE
@@ -820,7 +1127,7 @@ def main_camera(commBuf=None):
     #Release video and close windows
     camera.release()
     cv2.destroyAllWindows()
+    glfw.terminate()
 
 if __name__ == "__main__":
     main_camera()
-    glfw.terminate()
