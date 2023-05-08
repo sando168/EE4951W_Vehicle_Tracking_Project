@@ -5,6 +5,12 @@
 #              Controller.py file
 # Dependencies: None
 
+"""@package docstring
+Constants.py is the Python 3 script to have in order to:
+    - Define all the global variables
+    - Define all the configuration parameters for main_camera.py
+"""
+
 # The following constants are used in main_camera.py
 HOST = "10.131.91.207"              # Server IP Address
 PORT = 65432                        # Server Port
