@@ -39,18 +39,18 @@ char* space5;
 /* ----- Global Variables for WiFi Functionality (Normal Network) ----- */
 /*
 #include <WiFi.h>                         // wifi library for setting up ESP32 client
-const char* ssid     = "XR";              // wifi network ssid (name)
-const char* password = "quandang";        // wifi network password
+const char* ssid     = "ssid";              // wifi network ssid (name)
+const char* password = "password";        // wifi network password
 */
 /* ----- Global Variables for WiFi Functionality (Enterprise Network) ----- */
-///*
+/*
 #include <WiFi.h>
 #include "esp_wpa2.h"                     // wpa2 library for connections to Enterprise networks
-#define EAP_IDENTITY "sando168@umn.edu"   // login identity for Enterprise network
-#define EAP_USERNAME "sando168@umn.edu"   // oftentimes just a repeat of the identity
-#define EAP_PASSWORD "NskypeCOffee44Qn"   // login password
-const char* ssid = "eduroam";             // Enterprise network SSID
-//*/
+#define EAP_IDENTITY "enterprise login username"   // login identity for Enterprise network
+#define EAP_USERNAME "enterprise login username"   // oftentimes just a repeat of the identity
+#define EAP_PASSWORD "enterprise login password"   // login password
+const char* ssid = "ssid";             // Enterprise network SSID
+*/
 /* ----- Objects for setting ESP32 as server ----- */
 /*
 const uint ServerPort = 23;
@@ -84,7 +84,7 @@ void setup()
   */
   /* ----- Code to connect ESP32 to Enterprise Network ----- */
   ///*
-  //WiFi.mode(WIFI_AP);                     // access point mode: stations can connect to the ESP32
+  //WiFi.mode(WIFI_AP);                     // access point mode: stations can connect to the ESP32 (used in server mode)
   // connect to eduroam with login info
   WiFi.begin(ssid, WPA2_AUTH_PEAP, EAP_IDENTITY, EAP_USERNAME, EAP_PASSWORD);
   //*/
