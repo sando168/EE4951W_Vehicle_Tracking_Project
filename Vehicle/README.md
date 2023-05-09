@@ -11,3 +11,5 @@ The files are intended to be used with Visual Studio Code
 3/ Upload the following files to the project, except platformio.ini
 
 4/ The platformio.ini on the project needs to be the same as on file on GitHub
+
+Note: if you choosing to use Arduino IDE instead, you can run the Vehicle_Code_Wifi.ino
